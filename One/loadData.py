@@ -5,6 +5,8 @@
 
 import requests
 from bs4 import BeautifulSoup
+from io import StringIO
+import gzip
 
 
 # This function will be used to open https://datasets.imdbws.com/ and get all the links to the files that need
@@ -28,5 +30,16 @@ def getLinks():
     return links
 
 
+def readFileFromLink(link):
+    text = requests.get(link).text
+    stringFP = StringIO(text)
+
+    with gzip.open(stringFP, 'rb') as f:
+        file_content = f.read()
+
+    print(file_content)
+
+
 if __name__ == "__main__":
-    getLinks()
+    # getLinks()
+    readFileFromLink("https://datasets.imdbws.com/name.basics.tsv.gz")
