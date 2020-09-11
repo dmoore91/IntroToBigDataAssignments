@@ -2,9 +2,9 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS title(
     titleID INTEGER PRIMARY KEY ,
-    titleType VARCHAR(100) NOT NULL ,
-    primaryTitle VARCHAR(100) NOT NULL ,
-    originalTitle VARCHAR(100) NOT NULL ,
+    titleType text NOT NULL ,
+    primaryTitle text NOT NULL ,
+    originalTitle text NOT NULL ,
     isAdult BOOLEAN NOT NULL ,
     startYear INTEGER NOT NULL ,
     endYear INTEGER NOT NULL ,
