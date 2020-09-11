@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -423,7 +424,170 @@ func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int) {
 			}
 		}
 	}
+}
 
+func filterAdultContent(conn *pgx.Conn) {
+
+	// Get list of titles
+	queryString := "SELECT titleID FROM title WHERE isAdult IS TRUE;"
+
+	rows, err := conn.Query(context.Background(), queryString)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var titles []int
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		err = rows.Scan(&id)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		titles = append(titles, id)
+	}
+
+	titleString := ""
+
+	numTitles := len(titles)
+
+	for idx, elem := range titles {
+
+		titleString += strconv.Itoa(elem)
+
+		if idx != numTitles {
+			titleString += ","
+		}
+	}
+
+	// Get list of crews to delete
+	queryString = "SELECT crewID FROM crew WHERE titleID IN (list_of_titles);"
+
+	rows, err = conn.Query(context.Background(), queryString, titleString)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var crews []int
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		err = rows.Scan(&id)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		crews = append(crews, id)
+	}
+
+	crewString := ""
+
+	numCrews := len(crews)
+
+	for idx, elem := range crews {
+
+		crewString += strconv.Itoa(elem)
+
+		if idx != numCrews {
+			crewString += ","
+		}
+	}
+
+	var wg sync.WaitGroup
+
+	// Kick off asynchronous go routines to delete entries from episodes, ratings and principals
+	go func(conn *pgx.Conn, titleString string, wg *sync.WaitGroup) {
+		wg.Add(1)
+
+		defer wg.Done()
+
+		queryString := "DELETE FROM ratings" +
+			" WHERE titleID in ($1)"
+
+		_, err := conn.Exec(context.Background(), queryString, titleString)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}(conn, titleString, &wg)
+
+	go func(conn *pgx.Conn, titleString string, wg *sync.WaitGroup) {
+		wg.Add(1)
+
+		defer wg.Done()
+
+		queryString := "DELETE FROM episode " +
+			"WHERE titleID IN (list_of_titles) OR seriesTitleID IN (list_of_titles)"
+
+		_, err := conn.Exec(context.Background(), queryString, titleString, titleString)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}(conn, titleString, &wg)
+
+	go func(conn *pgx.Conn, titleString string, wg *sync.WaitGroup) {
+		wg.Add(1)
+
+		defer wg.Done()
+
+		queryString := "DELETE FROM principals " +
+			"WHERE titleID IN (list_of_titles);"
+
+		_, err := conn.Exec(context.Background(), queryString, titleString)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}(conn, titleString, &wg)
+
+	// Kick off asynchronous go routines to delete entries from writers and directors
+	go func(conn *pgx.Conn, crewString string, wg *sync.WaitGroup) {
+		wg.Add(1)
+
+		defer wg.Done()
+
+		queryString := "DELETE FROM directors " +
+			"WHERE crewID IN (list_of_crews);"
+
+		_, err := conn.Exec(context.Background(), queryString, titleString)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}(conn, crewString, &wg)
+
+	go func(conn *pgx.Conn, crewString string, wg *sync.WaitGroup) {
+		wg.Add(1)
+
+		defer wg.Done()
+
+		queryString := "DELETE FROM writers " +
+			"WHERE crewID IN (list_of_crews);"
+
+		_, err := conn.Exec(context.Background(), queryString, titleString)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}(conn, crewString, &wg)
+
+	// Wait for all our goroutines to finish
+	wg.Wait()
+
+	fmt.Println("Entries related to Adult content filtered out")
 }
 
 func main() {
@@ -435,24 +599,25 @@ func main() {
 		log.Fatal(err)
 	}
 
-	titleMap := getTitlesFromLink(conn)
-	fmt.Println("Finished getting titles")
+	//titleMap := getTitlesFromLink(conn)
+	//fmt.Println("Finished getting titles")
+	//
+	//peopleMap := getPeopleFromLink(conn)
+	//fmt.Println("Finished getting peoples")
+	//
+	//getEpisodesFromLink(conn, titleMap)
+	//fmt.Println("Finished getting episodes")
+	//
+	//getPrincipalsFromLink(conn, titleMap, peopleMap)
+	//fmt.Println("Finished getting principals")
+	//
+	//getCrewFromLink(conn, titleMap, peopleMap)
+	//fmt.Println("Finished getting crew")
+	//
+	//getRatingsFromLink(conn, titleMap)
+	//fmt.Println("Finished getting ratings")
 
-	peopleMap := getPeopleFromLink(conn)
-	fmt.Println("Finished getting peoples")
-
-	getEpisodesFromLink(conn, titleMap)
-	fmt.Println("Finished getting episodes")
-
-	getPrincipalsFromLink(conn, titleMap, peopleMap)
-	fmt.Println("Finished getting principals")
-
-	getCrewFromLink(conn, titleMap, peopleMap)
-	fmt.Println("Finished getting crew")
-
-	getRatingsFromLink(conn, titleMap)
-	fmt.Println("Finished getting ratings")
-
+	filterAdultContent(conn)
 	t := time.Now()
 	elapsed := t.Sub(start)
 	fmt.Println(elapsed)
