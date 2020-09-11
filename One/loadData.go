@@ -464,6 +464,8 @@ func filterAdultContent(conn *pgx.Conn) {
 		}
 	}
 
+	fmt.Println("Got title string")
+
 	// Get list of crews to delete
 	queryString = "SELECT crewID FROM crew WHERE titleID IN (list_of_titles);"
 
@@ -500,6 +502,8 @@ func filterAdultContent(conn *pgx.Conn) {
 		}
 	}
 
+	fmt.Println("Got crew string")
+
 	var wg sync.WaitGroup
 
 	// Kick off asynchronous go routines to delete entries from episodes, ratings and principals
@@ -507,6 +511,8 @@ func filterAdultContent(conn *pgx.Conn) {
 		wg.Add(1)
 
 		defer wg.Done()
+
+		fmt.Println("Got deleting ratings")
 
 		queryString := "DELETE FROM ratings" +
 			" WHERE titleID in ($1)"
@@ -524,6 +530,8 @@ func filterAdultContent(conn *pgx.Conn) {
 
 		defer wg.Done()
 
+		fmt.Println("Got deleting episodes")
+
 		queryString := "DELETE FROM episode " +
 			"WHERE titleID IN (list_of_titles) OR seriesTitleID IN (list_of_titles)"
 
@@ -539,6 +547,8 @@ func filterAdultContent(conn *pgx.Conn) {
 		wg.Add(1)
 
 		defer wg.Done()
+
+		fmt.Println("Got deleting principals")
 
 		queryString := "DELETE FROM principals " +
 			"WHERE titleID IN (list_of_titles);"
@@ -557,6 +567,8 @@ func filterAdultContent(conn *pgx.Conn) {
 
 		defer wg.Done()
 
+		fmt.Println("Got deleting directors")
+
 		queryString := "DELETE FROM directors " +
 			"WHERE crewID IN (list_of_crews);"
 
@@ -572,6 +584,8 @@ func filterAdultContent(conn *pgx.Conn) {
 		wg.Add(1)
 
 		defer wg.Done()
+
+		fmt.Println("Got deleting writers")
 
 		queryString := "DELETE FROM writers " +
 			"WHERE crewID IN (list_of_crews);"
