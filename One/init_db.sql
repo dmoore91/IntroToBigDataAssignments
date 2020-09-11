@@ -48,4 +48,10 @@ CREATE TABLE IF NOT EXISTS principal(
      category text NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS ratings(
+    titleID INTEGER NOT NULL ,
+    averageRating DECIMAL NOT NULL ,
+    numVotes INTEGER NOT NULL
+);
+
 COMMIT;

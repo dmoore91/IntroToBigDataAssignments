@@ -44,6 +44,12 @@ type principal struct {
 	Category string
 }
 
+type ratings struct {
+	TitleID       int
+	AverageRating float64
+	NumVotes      int
+}
+
 func getTitlesFromLink(conn *pgx.Conn) map[string]int {
 
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.basics.tsv\\data.tsv")
@@ -362,6 +368,55 @@ func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[stri
 	}
 }
 
+func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int) {
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.ratings.tsv\\data.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uncompressedString := string(data)
+
+	for idx, elem := range strings.Split(uncompressedString, "\n") {
+		if idx != 0 {
+			row := strings.Split(elem, "\t")
+			fmt.Println(row)
+
+			averageRating, err := strconv.ParseFloat(row[1], 32)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			var numVotes int
+			if row[2] != "\\N" {
+				numVotes, err = strconv.Atoi(row[2])
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			r := ratings{
+				TitleID:       titleMap[row[0]],
+				AverageRating: averageRating,
+				NumVotes:      numVotes,
+			}
+
+			queryString := "INSERT INTO ratings(titleID, averageRating, numVotes) " +
+				"VALUES ($1, $2, $3)"
+
+			commandTag, err := conn.Exec(context.Background(), queryString, r.TitleID, r.AverageRating, r.NumVotes)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if commandTag.RowsAffected() == 0 {
+				log.Fatal(err)
+			}
+		}
+	}
+
+}
+
 func main() {
 
 	start := time.Now()
@@ -378,6 +433,8 @@ func main() {
 	getPrincipalsFromLink(conn, titleMap, peopleMap)
 
 	getCrewFromLink(conn, titleMap, peopleMap)
+
+	getRatingsFromLink(conn, titleMap)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
