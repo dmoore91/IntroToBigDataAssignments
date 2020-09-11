@@ -41,5 +41,11 @@ CREATE TABLE IF NOT EXISTS people(
   deathYear INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS principal(
+     titleID INTEGER NOT NULL ,
+     ordering INTEGER NOT NULL ,
+     peopleID INTEGER NOT NULL ,
+     category text NOT NULL
+);
 
 COMMIT;

@@ -36,6 +36,13 @@ type people struct {
 	DeathYear   int
 }
 
+type principal struct {
+	TitleID  int
+	Ordering int
+	PeopleID int
+	Category string
+}
+
 func getTitlesFromLink(conn *pgx.Conn) map[string]int {
 
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.basics.tsv\\data.tsv")
@@ -239,14 +246,64 @@ func getPeopleFromLink(conn *pgx.Conn) map[string]int {
 	return m
 }
 
+func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int) {
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.principals.tsv\\data.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uncompressedString := string(data)
+
+	m := make(map[string]int)
+
+	for idx, elem := range strings.Split(uncompressedString, "\n") {
+		if idx != 0 {
+			row := strings.Split(elem, "\t")
+			fmt.Println(row)
+
+			m[row[0]] = idx
+
+			var ordering int
+			if row[1] != "\\N" {
+				ordering, err = strconv.Atoi(row[1])
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			p := principal{
+				TitleID:  titleMap[row[0]],
+				Ordering: ordering,
+				PeopleID: peopleMap[row[2]],
+				Category: row[3],
+			}
+
+			queryString := "INSERT INTO principal(titleID, ordering, peopleID, category) " +
+				"VALUES ($1, $2, $3, $4)"
+
+			commandTag, err := conn.Exec(context.Background(), queryString, p.TitleID, p.Ordering, p.PeopleID,
+				p.Category)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if commandTag.RowsAffected() == 0 {
+				log.Fatal(err)
+			}
+		}
+	}
+}
+
 func main() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	titleMap := getTitlesFromLink(conn)
-
-	getEpisodesFromLink(conn, titleMap)
-	peopleMap := getPeopleFromLink(conn)
+	//titleMap := getTitlesFromLink(conn)
+	//
+	//getEpisodesFromLink(conn, titleMap)
+	//peopleMap := getPeopleFromLink(conn)
+	getPrincipalsFromLink(conn, make(map[string]int), make(map[string]int))
 }
