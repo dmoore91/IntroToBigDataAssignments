@@ -64,7 +64,6 @@ func getTitlesFromLink(conn *pgx.Conn) map[string]int {
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
-			fmt.Println(row)
 
 			m[row[0]] = idx
 
@@ -150,7 +149,6 @@ func getEpisodesFromLink(conn *pgx.Conn, m map[string]int) {
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
-			fmt.Println(row)
 
 			titleID := m[row[0]]
 			seasonTitleID := m[row[1]]
@@ -208,7 +206,6 @@ func getPeopleFromLink(conn *pgx.Conn) map[string]int {
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
-			fmt.Println(row)
 
 			m[row[0]] = idx
 
@@ -266,7 +263,6 @@ func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap ma
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
-			fmt.Println(row)
 
 			m[row[0]] = idx
 
@@ -347,7 +343,6 @@ func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[stri
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
-			fmt.Println(row)
 
 			queryString := "INSERT INTO crew(titleID, crewID) " +
 				"VALUES ($1, $2)"
@@ -379,7 +374,6 @@ func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int) {
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
-			fmt.Println(row)
 
 			averageRating, err := strconv.ParseFloat(row[1], 32)
 			if err != nil {
@@ -427,14 +421,22 @@ func main() {
 	}
 
 	titleMap := getTitlesFromLink(conn)
+	fmt.Println("Finished getting titles")
 
 	getEpisodesFromLink(conn, titleMap)
+	fmt.Println("Finished getting episodes")
+
 	peopleMap := getPeopleFromLink(conn)
+	fmt.Println("Finished getting peoples")
+
 	getPrincipalsFromLink(conn, titleMap, peopleMap)
+	fmt.Println("Finished getting principals")
 
 	getCrewFromLink(conn, titleMap, peopleMap)
+	fmt.Println("Finished getting crew")
 
 	getRatingsFromLink(conn, titleMap)
+	fmt.Println("Finished getting ratings")
 
 	t := time.Now()
 	elapsed := t.Sub(start)
