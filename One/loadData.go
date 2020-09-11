@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type title struct {
@@ -295,15 +296,90 @@ func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap ma
 	}
 }
 
+func addDirectors(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int) {
+	for _, elem := range people {
+		queryString := "INSERT INTO directors(crewID, peopleID) " +
+			"VALUES ($1, $2)"
+
+		commandTag, err := conn.Exec(context.Background(), queryString, crewID, peopleMap[elem])
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if commandTag.RowsAffected() == 0 {
+			log.Fatal(err)
+		}
+	}
+}
+
+func addWriters(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int) {
+	for _, elem := range people {
+		queryString := "INSERT INTO writers(crewID, peopleID) " +
+			"VALUES ($1, $2)"
+
+		commandTag, err := conn.Exec(context.Background(), queryString, crewID, peopleMap[elem])
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if commandTag.RowsAffected() == 0 {
+			log.Fatal(err)
+		}
+	}
+}
+
+func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int) {
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.crew.tsv\\data.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uncompressedString := string(data)
+
+	for idx, elem := range strings.Split(uncompressedString, "\n") {
+		if idx != 0 {
+			row := strings.Split(elem, "\t")
+			fmt.Println(row)
+
+			queryString := "INSERT INTO crew(titleID, crewID) " +
+				"VALUES ($1, $2)"
+
+			commandTag, err := conn.Exec(context.Background(), queryString, titleMap[row[0]], idx)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if commandTag.RowsAffected() == 0 {
+				log.Fatal(err)
+			}
+
+			addDirectors(conn, strings.Split(row[1], ","), peopleMap, idx) // Method to add directors to linking table
+			addWriters(conn, strings.Split(row[2], ","), peopleMap, idx)   // Method to add writers to linking table
+		}
+	}
+}
+
 func main() {
+
+	start := time.Now()
+
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	//titleMap := getTitlesFromLink(conn)
-	//
-	//getEpisodesFromLink(conn, titleMap)
-	//peopleMap := getPeopleFromLink(conn)
-	getPrincipalsFromLink(conn, make(map[string]int), make(map[string]int))
+	titleMap := getTitlesFromLink(conn)
+
+	getEpisodesFromLink(conn, titleMap)
+	peopleMap := getPeopleFromLink(conn)
+	getPrincipalsFromLink(conn, titleMap, peopleMap)
+
+	getCrewFromLink(conn, titleMap, peopleMap)
+
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println(elapsed)
 }
