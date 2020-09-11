@@ -22,8 +22,18 @@ type title struct {
 	Genres         []string
 }
 
-type titles struct {
-	Titles []title
+type episode struct {
+	TitleID       int
+	SeriesTitleID int
+	SeasonNumber  int
+	EpisodeNumber int
+}
+
+type people struct {
+	PeopleID    int
+	PrimaryName string
+	BirthYear   int
+	DeathYear   int
 }
 
 func getTitlesFromLink(conn *pgx.Conn) map[string]int {
@@ -115,11 +125,128 @@ func getTitlesFromLink(conn *pgx.Conn) map[string]int {
 	return m
 }
 
+func getEpisodesFromLink(conn *pgx.Conn, m map[string]int) {
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.episode.tsv\\data.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uncompressedString := string(data)
+
+	for idx, elem := range strings.Split(uncompressedString, "\n") {
+		if idx != 0 {
+			row := strings.Split(elem, "\t")
+			fmt.Println(row)
+
+			titleID := m[row[0]]
+			seasonTitleID := m[row[1]]
+
+			var seasonNumber int
+			if row[2] != "\\N" {
+				seasonNumber, err = strconv.Atoi(row[2])
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			var episodeNumber int
+			if row[3] != "\\N" {
+				episodeNumber, err = strconv.Atoi(row[3])
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			e := episode{
+				TitleID:       titleID,
+				SeriesTitleID: seasonTitleID,
+				SeasonNumber:  seasonNumber,
+				EpisodeNumber: episodeNumber,
+			}
+
+			queryString := "INSERT INTO episode(titleID, seriesTitleID, seasonNumber, episodeNumber) " +
+				"VALUES ($1, $2, $3, $4)"
+
+			commandTag, err := conn.Exec(context.Background(), queryString, e.TitleID, e.SeriesTitleID, e.SeasonNumber,
+				e.EpisodeNumber)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if commandTag.RowsAffected() == 0 {
+				log.Fatal(err)
+			}
+		}
+	}
+}
+
+func getPeopleFromLink(conn *pgx.Conn) map[string]int {
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\name.basics.tsv\\data.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uncompressedString := string(data)
+
+	m := make(map[string]int)
+
+	for idx, elem := range strings.Split(uncompressedString, "\n") {
+		if idx != 0 {
+			row := strings.Split(elem, "\t")
+			fmt.Println(row)
+
+			m[row[0]] = idx
+
+			var birthYear int
+			if row[2] != "\\N" {
+				birthYear, err = strconv.Atoi(row[2])
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			var deathYear int
+			if row[3] != "\\N" {
+				deathYear, err = strconv.Atoi(row[3])
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			p := people{
+				PeopleID:    idx,
+				PrimaryName: row[1],
+				BirthYear:   birthYear,
+				DeathYear:   deathYear,
+			}
+
+			queryString := "INSERT INTO people(peopleID, primaryName, birthYear, deathYear) " +
+				"VALUES ($1, $2, $3, $4)"
+
+			commandTag, err := conn.Exec(context.Background(), queryString, p.PeopleID, p.PrimaryName, p.BirthYear,
+				p.DeathYear)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if commandTag.RowsAffected() == 0 {
+				log.Fatal(err)
+			}
+		}
+	}
+	return m
+}
+
 func main() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	getTitlesFromLink(conn)
+	titleMap := getTitlesFromLink(conn)
+
+	getEpisodesFromLink(conn, titleMap)
+	peopleMap := getPeopleFromLink(conn)
 }
