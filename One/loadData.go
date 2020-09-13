@@ -13,6 +13,7 @@ import (
 )
 
 func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
+	fmt.Println("Start getting titles")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
@@ -34,65 +35,62 @@ func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
 
-			if len(row) == 9 {
+			isAdult, err := strconv.ParseBool(row[4])
+			if err != nil {
+				log.Fatal(err)
+			}
 
-				isAdult, err := strconv.ParseBool(row[4])
+			if !isAdult {
+
+				m[row[0]] = idx
+
+				var startYear int
+				if row[5] != "\\N" {
+					startYear, err = strconv.Atoi(row[5])
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+
+				var endYear int
+				if row[6] != "\\N" {
+					endYear, err = strconv.Atoi(row[6])
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+
+				var runtimeMinutes int
+
+				if row[7] != "\\N" {
+					runtimeMinutes, err = strconv.Atoi(row[7])
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+
+				var genres []string
+
+				if row[8] != "\\N" {
+					genres = strings.Split(row[8], ",")
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+
+				queryString := "INSERT INTO title(titleID,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear," +
+					"runtimeMinutes,genres) " +
+					"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
+
+				commandTag, err := conn.Exec(context.Background(), queryString, idx, row[1], row[2], row[3],
+					isAdult, startYear, endYear, runtimeMinutes, genres)
+
 				if err != nil {
 					log.Fatal(err)
 				}
 
-				if !isAdult {
-
-					m[row[0]] = idx
-
-					var startYear int
-					if row[5] != "\\N" {
-						startYear, err = strconv.Atoi(row[5])
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-
-					var endYear int
-					if row[6] != "\\N" {
-						endYear, err = strconv.Atoi(row[6])
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-
-					var runtimeMinutes int
-
-					if row[7] != "\\N" {
-						runtimeMinutes, err = strconv.Atoi(row[7])
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-
-					var genres []string
-
-					if row[8] != "\\N" {
-						genres = strings.Split(row[8], ",")
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-
-					queryString := "INSERT INTO title(titleID,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear," +
-						"runtimeMinutes,genres) " +
-						"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
-
-					commandTag, err := conn.Exec(context.Background(), queryString, idx, row[1], row[2], row[3],
-						isAdult, startYear, endYear, runtimeMinutes, genres)
-
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					if commandTag.RowsAffected() == 0 {
-						log.Fatal(err)
-					}
+				if commandTag.RowsAffected() == 0 {
+					log.Fatal(err)
 				}
 			}
 		}
@@ -109,6 +107,7 @@ func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
 }
 
 func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
+	fmt.Println("Start getting episodes")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
@@ -125,7 +124,7 @@ func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
 	uncompressedString := string(data)
 
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
-		if idx != 0 && len(elem) == 4 {
+		if idx != 0 {
 			row := strings.Split(elem, "\t")
 			fmt.Println(row)
 
@@ -174,6 +173,7 @@ func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
 }
 
 func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
+	fmt.Println("Start getting people")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
@@ -195,38 +195,35 @@ func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
 
-			if len(row) == 4 {
+			m[row[0]] = idx
 
-				m[row[0]] = idx
-
-				var birthYear int
-				if row[2] != "\\N" {
-					birthYear, err = strconv.Atoi(row[2])
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
-
-				var deathYear int
-				if row[3] != "\\N" {
-					deathYear, err = strconv.Atoi(row[3])
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
-
-				queryString := "INSERT INTO people(peopleID, primaryName, birthYear, deathYear) " +
-					"VALUES ($1, $2, $3, $4)"
-
-				commandTag, err := conn.Exec(context.Background(), queryString, idx, row[1], birthYear, deathYear)
-
+			var birthYear int
+			if row[2] != "\\N" {
+				birthYear, err = strconv.Atoi(row[2])
 				if err != nil {
 					log.Fatal(err)
 				}
+			}
 
-				if commandTag.RowsAffected() == 0 {
+			var deathYear int
+			if row[3] != "\\N" {
+				deathYear, err = strconv.Atoi(row[3])
+				if err != nil {
 					log.Fatal(err)
 				}
+			}
+
+			queryString := "INSERT INTO people(peopleID, primaryName, birthYear, deathYear) " +
+				"VALUES ($1, $2, $3, $4)"
+
+			commandTag, err := conn.Exec(context.Background(), queryString, idx, row[1], birthYear, deathYear)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if commandTag.RowsAffected() == 0 {
+				log.Fatal(err)
 			}
 		}
 	}
@@ -242,6 +239,7 @@ func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
 }
 
 func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+	fmt.Println("Start getting principals")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
@@ -261,34 +259,31 @@ func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
 
-			if len(row) == 4 {
+			titleID, titleExists := titleMap[row[0]]
+			peopleID, peopleExists := peopleMap[row[2]]
 
-				titleID, titleExists := titleMap[row[0]]
-				peopleID, peopleExists := peopleMap[row[2]]
+			if titleExists && peopleExists {
 
-				if titleExists && peopleExists {
-
-					var ordering int
-					if row[1] != "\\N" {
-						ordering, err = strconv.Atoi(row[1])
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-
-					queryString := "INSERT INTO principal(titleID, ordering, peopleID, category) " +
-						"VALUES ($1, $2, $3, $4)"
-
-					commandTag, err := conn.Exec(context.Background(), queryString, titleID, ordering,
-						peopleID, row[3])
-
+				var ordering int
+				if row[1] != "\\N" {
+					ordering, err = strconv.Atoi(row[1])
 					if err != nil {
 						log.Fatal(err)
 					}
+				}
 
-					if commandTag.RowsAffected() == 0 {
-						log.Fatal(err)
-					}
+				queryString := "INSERT INTO principal(titleID, ordering, peopleID, category) " +
+					"VALUES ($1, $2, $3, $4)"
+
+				commandTag, err := conn.Exec(context.Background(), queryString, titleID, ordering,
+					peopleID, row[3])
+
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				if commandTag.RowsAffected() == 0 {
+					log.Fatal(err)
 				}
 			}
 		}
@@ -362,6 +357,7 @@ func addWriters(people []string, peopleMap map[string]int, crewID int, wg *sync.
 }
 
 func getCrewFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+	fmt.Println("Start getting crew")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
@@ -381,29 +377,26 @@ func getCrewFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
 
-			if len(row) == 3 {
+			titleID, exists := titleMap[row[0]]
 
-				titleID, exists := titleMap[row[0]]
+			if exists {
 
-				if exists {
+				queryString := "INSERT INTO crew(titleID, crewID) " +
+					"VALUES ($1, $2)"
 
-					queryString := "INSERT INTO crew(titleID, crewID) " +
-						"VALUES ($1, $2)"
+				commandTag, err := conn.Exec(context.Background(), queryString, titleID, idx)
 
-					commandTag, err := conn.Exec(context.Background(), queryString, titleID, idx)
-
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					if commandTag.RowsAffected() == 0 {
-						log.Fatal(err)
-					}
-
-					wg.Add(2)
-					addDirectors(strings.Split(row[1], ","), peopleMap, idx, wg) // Method to add directors to linking table
-					addWriters(strings.Split(row[2], ","), peopleMap, idx, wg)   // Method to add writers to linking table
+				if err != nil {
+					log.Fatal(err)
 				}
+
+				if commandTag.RowsAffected() == 0 {
+					log.Fatal(err)
+				}
+
+				wg.Add(2)
+				addDirectors(strings.Split(row[1], ","), peopleMap, idx, wg) // Method to add directors to linking table
+				addWriters(strings.Split(row[2], ","), peopleMap, idx, wg)   // Method to add writers to linking table
 			}
 		}
 	}
@@ -417,6 +410,7 @@ func getCrewFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync
 }
 
 func getRatingsFromLink(titleMap map[string]int, wg *sync.WaitGroup) {
+	fmt.Println("Start getting ratings")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
@@ -436,37 +430,34 @@ func getRatingsFromLink(titleMap map[string]int, wg *sync.WaitGroup) {
 		if idx != 0 {
 			row := strings.Split(elem, "\t")
 
-			if len(row) == 3 {
+			titleID, exists := titleMap[row[0]]
 
-				titleID, exists := titleMap[row[0]]
+			if exists {
 
-				if exists {
+				averageRating, err := strconv.ParseFloat(row[1], 32)
+				if err != nil {
+					log.Fatal(err)
+				}
 
-					averageRating, err := strconv.ParseFloat(row[1], 32)
+				var numVotes int
+				if row[2] != "\\N" {
+					numVotes, err = strconv.Atoi(row[2])
 					if err != nil {
 						log.Fatal(err)
 					}
+				}
 
-					var numVotes int
-					if row[2] != "\\N" {
-						numVotes, err = strconv.Atoi(row[2])
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
+				queryString := "INSERT INTO ratings(titleID, averageRating, numVotes) " +
+					"VALUES ($1, $2, $3)"
 
-					queryString := "INSERT INTO ratings(titleID, averageRating, numVotes) " +
-						"VALUES ($1, $2, $3)"
+				commandTag, err := conn.Exec(context.Background(), queryString, titleID, averageRating, numVotes)
 
-					commandTag, err := conn.Exec(context.Background(), queryString, titleID, averageRating, numVotes)
+				if err != nil {
+					log.Fatal(err)
+				}
 
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					if commandTag.RowsAffected() == 0 {
-						log.Fatal(err)
-					}
+				if commandTag.RowsAffected() == 0 {
+					log.Fatal(err)
 				}
 			}
 		}
