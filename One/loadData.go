@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,7 +51,8 @@ type ratings struct {
 	NumVotes      int
 }
 
-func getTitlesFromLink(conn *pgx.Conn) map[string]int {
+func getTitlesFromLink(conn *pgx.Conn, titleChan chan map[string]int, wg *sync.WaitGroup) {
+	defer wg.Done()
 
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.basics.tsv\\data.tsv")
 	if err != nil {
@@ -141,10 +143,15 @@ func getTitlesFromLink(conn *pgx.Conn) map[string]int {
 		}
 	}
 
-	return m
+	fmt.Println("Finished getting titles")
+
+	titleChan <- m
 }
 
-func getEpisodesFromLink(conn *pgx.Conn, m map[string]int) {
+func getEpisodesFromLink(conn *pgx.Conn, m map[string]int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.episode.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
@@ -200,9 +207,14 @@ func getEpisodesFromLink(conn *pgx.Conn, m map[string]int) {
 			}
 		}
 	}
+
+	fmt.Println("Finished getting episodes")
 }
 
-func getPeopleFromLink(conn *pgx.Conn) map[string]int {
+func getPeopleFromLink(conn *pgx.Conn, peopleChan chan map[string]int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\name.basics.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
@@ -259,10 +271,16 @@ func getPeopleFromLink(conn *pgx.Conn) map[string]int {
 			}
 		}
 	}
-	return m
+
+	fmt.Println("Finished getting peoples")
+
+	peopleChan <- m
 }
 
-func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int) {
+func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.principals.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
@@ -312,9 +330,14 @@ func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap ma
 			}
 		}
 	}
+
+	fmt.Println("Finished getting principals")
 }
 
-func addDirectors(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int) {
+func addDirectors(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	for _, elem := range people {
 		queryString := "INSERT INTO directors(crewID, peopleID) " +
 			"VALUES ($1, $2)"
@@ -331,7 +354,10 @@ func addDirectors(conn *pgx.Conn, people []string, peopleMap map[string]int, cre
 	}
 }
 
-func addWriters(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int) {
+func addWriters(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	for _, elem := range people {
 		queryString := "INSERT INTO writers(crewID, peopleID) " +
 			"VALUES ($1, $2)"
@@ -348,7 +374,10 @@ func addWriters(conn *pgx.Conn, people []string, peopleMap map[string]int, crewI
 	}
 }
 
-func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int) {
+func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.crew.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
@@ -379,15 +408,21 @@ func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[stri
 						log.Fatal(err)
 					}
 
-					addDirectors(conn, strings.Split(row[1], ","), peopleMap, idx) // Method to add directors to linking table
-					addWriters(conn, strings.Split(row[2], ","), peopleMap, idx)   // Method to add writers to linking table
+					wg.Add(2)
+					addDirectors(conn, strings.Split(row[1], ","), peopleMap, idx, wg) // Method to add directors to linking table
+					addWriters(conn, strings.Split(row[2], ","), peopleMap, idx, wg)   // Method to add writers to linking table
 				}
 			}
 		}
 	}
+
+	fmt.Println("Finished getting crew")
 }
 
-func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int) {
+func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.ratings.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
@@ -440,6 +475,8 @@ func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int) {
 			}
 		}
 	}
+
+	fmt.Println("Finished getting ratings")
 }
 
 func main() {
@@ -451,23 +488,32 @@ func main() {
 		log.Fatal(err)
 	}
 
-	titleMap := getTitlesFromLink(conn)
-	fmt.Println("Finished getting titles")
+	var wg sync.WaitGroup
 
-	peopleMap := getPeopleFromLink(conn)
-	fmt.Println("Finished getting peoples")
+	titleChan := make(chan map[string]int)
+	wg.Add(1)
+	go getTitlesFromLink(conn, titleChan, &wg)
 
-	getEpisodesFromLink(conn, titleMap)
-	fmt.Println("Finished getting episodes")
+	peopleChan := make(chan map[string]int)
+	wg.Add(1)
+	getPeopleFromLink(conn, peopleChan, &wg)
 
-	getPrincipalsFromLink(conn, titleMap, peopleMap)
-	fmt.Println("Finished getting principals")
+	wg.Wait()
 
-	getCrewFromLink(conn, titleMap, peopleMap)
-	fmt.Println("Finished getting crew")
+	titleMap := <-titleChan
+	peopleMap := <-peopleChan
 
-	getRatingsFromLink(conn, titleMap)
-	fmt.Println("Finished getting ratings")
+	close(titleChan)
+	close(peopleChan)
+
+	wg.Add(4)
+
+	go getEpisodesFromLink(conn, titleMap, &wg)
+	go getPrincipalsFromLink(conn, titleMap, peopleMap, &wg)
+	go getCrewFromLink(conn, titleMap, peopleMap, &wg)
+	go getRatingsFromLink(conn, titleMap, &wg)
+
+	wg.Wait()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
