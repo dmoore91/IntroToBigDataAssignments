@@ -12,45 +12,6 @@ import (
 	"time"
 )
 
-type title struct {
-	TitleID        int
-	TitleType      string
-	PrimaryTitle   string
-	OriginalTitle  string
-	IsAdult        bool
-	StartYear      int
-	EndYear        int
-	RuntimeMinutes int
-	Genres         []string
-}
-
-type episode struct {
-	TitleID       int
-	SeriesTitleID int
-	SeasonNumber  int
-	EpisodeNumber int
-}
-
-type people struct {
-	PeopleID    int
-	PrimaryName string
-	BirthYear   int
-	DeathYear   int
-}
-
-type principal struct {
-	TitleID  int
-	Ordering int
-	PeopleID int
-	Category string
-}
-
-type ratings struct {
-	TitleID       int
-	AverageRating float64
-	NumVotes      int
-}
-
 func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
@@ -118,24 +79,12 @@ func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
 						}
 					}
 
-					t := title{
-						TitleID:        idx,
-						TitleType:      row[1],
-						PrimaryTitle:   row[2],
-						OriginalTitle:  row[3],
-						IsAdult:        isAdult,
-						StartYear:      startYear,
-						EndYear:        endYear,
-						RuntimeMinutes: runtimeMinutes,
-						Genres:         genres,
-					}
-
 					queryString := "INSERT INTO title(titleID,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear," +
 						"runtimeMinutes,genres) " +
 						"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
 
-					commandTag, err := conn.Exec(context.Background(), queryString, t.TitleID, t.TitleType, t.PrimaryTitle, t.OriginalTitle,
-						t.IsAdult, t.StartYear, t.EndYear, t.RuntimeMinutes, t.Genres)
+					commandTag, err := conn.Exec(context.Background(), queryString, idx, row[1], row[2], row[3],
+						isAdult, startYear, endYear, runtimeMinutes, genres)
 
 					if err != nil {
 						log.Fatal(err)
@@ -200,18 +149,11 @@ func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
 					}
 				}
 
-				e := episode{
-					TitleID:       titleID,
-					SeriesTitleID: seasonTitleID,
-					SeasonNumber:  seasonNumber,
-					EpisodeNumber: episodeNumber,
-				}
-
 				queryString := "INSERT INTO episode(titleID, seriesTitleID, seasonNumber, episodeNumber) " +
 					"VALUES ($1, $2, $3, $4)"
 
-				commandTag, err := conn.Exec(context.Background(), queryString, e.TitleID, e.SeriesTitleID, e.SeasonNumber,
-					e.EpisodeNumber)
+				commandTag, err := conn.Exec(context.Background(), queryString, titleID, seasonTitleID, seasonNumber,
+					episodeNumber)
 
 				if err != nil {
 					log.Fatal(err)
@@ -273,18 +215,10 @@ func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
 					}
 				}
 
-				p := people{
-					PeopleID:    idx,
-					PrimaryName: row[1],
-					BirthYear:   birthYear,
-					DeathYear:   deathYear,
-				}
-
 				queryString := "INSERT INTO people(peopleID, primaryName, birthYear, deathYear) " +
 					"VALUES ($1, $2, $3, $4)"
 
-				commandTag, err := conn.Exec(context.Background(), queryString, p.PeopleID, p.PrimaryName, p.BirthYear,
-					p.DeathYear)
+				commandTag, err := conn.Exec(context.Background(), queryString, idx, row[1], birthYear, deathYear)
 
 				if err != nil {
 					log.Fatal(err)
@@ -329,9 +263,10 @@ func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg
 
 			if len(row) == 4 {
 
-				titleID, exists := titleMap[row[0]]
+				titleID, titleExists := titleMap[row[0]]
+				peopleID, peopleExists := peopleMap[row[2]]
 
-				if exists {
+				if titleExists && peopleExists {
 
 					var ordering int
 					if row[1] != "\\N" {
@@ -341,18 +276,11 @@ func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg
 						}
 					}
 
-					p := principal{
-						TitleID:  titleID,
-						Ordering: ordering,
-						PeopleID: peopleMap[row[2]],
-						Category: row[3],
-					}
-
 					queryString := "INSERT INTO principal(titleID, ordering, peopleID, category) " +
 						"VALUES ($1, $2, $3, $4)"
 
-					commandTag, err := conn.Exec(context.Background(), queryString, p.TitleID, p.Ordering, p.PeopleID,
-						p.Category)
+					commandTag, err := conn.Exec(context.Background(), queryString, titleID, ordering,
+						peopleID, row[3])
 
 					if err != nil {
 						log.Fatal(err)
@@ -527,16 +455,10 @@ func getRatingsFromLink(titleMap map[string]int, wg *sync.WaitGroup) {
 						}
 					}
 
-					r := ratings{
-						TitleID:       titleID,
-						AverageRating: averageRating,
-						NumVotes:      numVotes,
-					}
-
 					queryString := "INSERT INTO ratings(titleID, averageRating, numVotes) " +
 						"VALUES ($1, $2, $3)"
 
-					commandTag, err := conn.Exec(context.Background(), queryString, r.TitleID, r.AverageRating, r.NumVotes)
+					commandTag, err := conn.Exec(context.Background(), queryString, titleID, averageRating, numVotes)
 
 					if err != nil {
 						log.Fatal(err)
