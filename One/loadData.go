@@ -12,15 +12,13 @@ import (
 	"time"
 )
 
-func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
+func getTitlesFromLink(titleMap *map[string]int, wg *sync.WaitGroup) {
 	fmt.Println("Start getting titles")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	defer wg.Done()
 
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.basics.tsv\\data.tsv")
 	if err != nil {
@@ -30,6 +28,8 @@ func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
 	uncompressedString := string(data)
 
 	m := make(map[string]int)
+
+	count := 0
 
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
@@ -94,16 +94,28 @@ func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
 				}
 			}
 		}
+
+		if count > 5 {
+			break
+		}
+
+		count += 1
 	}
 
 	fmt.Println("Finished getting titles")
 
-	titleChan <- m
+	titleMap = &m
+	fmt.Println(m)
 
 	err = conn.Close(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println("Close conn")
+
+	wg.Done()
+
 }
 
 func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
@@ -172,15 +184,13 @@ func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
 	fmt.Println("Finished getting episodes")
 }
 
-func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
+func getPeopleFromLink(peopleMap *map[string]int, wg *sync.WaitGroup) {
 	fmt.Println("Start getting people")
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	defer wg.Done()
 
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\name.basics.tsv\\data.tsv")
 	if err != nil {
@@ -190,6 +200,8 @@ func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
 	uncompressedString := string(data)
 
 	m := make(map[string]int)
+
+	count := 0
 
 	for idx, elem := range strings.Split(uncompressedString, "\n") {
 		if idx != 0 {
@@ -226,16 +238,27 @@ func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
 				log.Fatal(err)
 			}
 		}
+
+		if count > 5 {
+			break
+		}
+
+		count += 1
 	}
 
 	fmt.Println("Finished getting peoples")
 
-	peopleChan <- m
+	peopleMap = &m
+	fmt.Println(m)
 
 	err = conn.Close(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println("Close context")
+
+	wg.Done()
 }
 
 func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
@@ -296,14 +319,7 @@ func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg
 	}
 }
 
-func addDirectors(people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
-
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer wg.Done()
+func addDirectors(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int) {
 
 	for _, elem := range people {
 		queryString := "INSERT INTO directors(crewID, peopleID) " +
@@ -320,20 +336,13 @@ func addDirectors(people []string, peopleMap map[string]int, crewID int, wg *syn
 		}
 	}
 
-	err = conn.Close(context.Background())
+	err := conn.Close(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func addWriters(people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
-
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer wg.Done()
+func addWriters(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int) {
 
 	for _, elem := range people {
 		queryString := "INSERT INTO writers(crewID, peopleID) " +
@@ -350,7 +359,7 @@ func addWriters(people []string, peopleMap map[string]int, crewID int, wg *sync.
 		}
 	}
 
-	err = conn.Close(context.Background())
+	err := conn.Close(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -394,9 +403,8 @@ func getCrewFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync
 					log.Fatal(err)
 				}
 
-				wg.Add(2)
-				addDirectors(strings.Split(row[1], ","), peopleMap, idx, wg) // Method to add directors to linking table
-				addWriters(strings.Split(row[2], ","), peopleMap, idx, wg)   // Method to add writers to linking table
+				addDirectors(conn, strings.Split(row[1], ","), peopleMap, idx) // Method to add directors to linking table
+				addWriters(conn, strings.Split(row[2], ","), peopleMap, idx)   // Method to add writers to linking table
 			}
 		}
 	}
@@ -474,23 +482,19 @@ func main() {
 
 	start := time.Now()
 
+	var titleMap map[string]int
+	var peopleMap map[string]int
+
 	var wg sync.WaitGroup
 
-	titleChan := make(chan map[string]int)
-	wg.Add(1)
-	go getTitlesFromLink(titleChan, &wg)
+	wg.Add(2)
+	go getTitlesFromLink(&titleMap, &wg)
+	go getPeopleFromLink(&peopleMap, &wg)
 
-	peopleChan := make(chan map[string]int)
-	wg.Add(1)
-	getPeopleFromLink(peopleChan, &wg)
+	fmt.Println(titleMap)
+	fmt.Println(peopleMap)
 
 	wg.Wait()
-
-	titleMap := <-titleChan
-	peopleMap := <-peopleChan
-
-	close(titleChan)
-	close(peopleChan)
 
 	wg.Add(4)
 
