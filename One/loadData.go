@@ -51,7 +51,13 @@ type ratings struct {
 	NumVotes      int
 }
 
-func getTitlesFromLink(conn *pgx.Conn, titleChan chan map[string]int, wg *sync.WaitGroup) {
+func getTitlesFromLink(titleChan chan map[string]int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	defer wg.Done()
 
 	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.basics.tsv\\data.tsv")
@@ -146,9 +152,19 @@ func getTitlesFromLink(conn *pgx.Conn, titleChan chan map[string]int, wg *sync.W
 	fmt.Println("Finished getting titles")
 
 	titleChan <- m
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func getEpisodesFromLink(conn *pgx.Conn, m map[string]int, wg *sync.WaitGroup) {
+func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer wg.Done()
 
@@ -208,10 +224,19 @@ func getEpisodesFromLink(conn *pgx.Conn, m map[string]int, wg *sync.WaitGroup) {
 		}
 	}
 
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println("Finished getting episodes")
 }
 
-func getPeopleFromLink(conn *pgx.Conn, peopleChan chan map[string]int, wg *sync.WaitGroup) {
+func getPeopleFromLink(peopleChan chan map[string]int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer wg.Done()
 
@@ -275,9 +300,19 @@ func getPeopleFromLink(conn *pgx.Conn, peopleChan chan map[string]int, wg *sync.
 	fmt.Println("Finished getting peoples")
 
 	peopleChan <- m
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer wg.Done()
 
@@ -332,9 +367,18 @@ func getPrincipalsFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap ma
 	}
 
 	fmt.Println("Finished getting principals")
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func addDirectors(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
+func addDirectors(people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer wg.Done()
 
@@ -352,9 +396,19 @@ func addDirectors(conn *pgx.Conn, people []string, peopleMap map[string]int, cre
 			log.Fatal(err)
 		}
 	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func addWriters(conn *pgx.Conn, people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
+func addWriters(people []string, peopleMap map[string]int, crewID int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer wg.Done()
 
@@ -372,9 +426,19 @@ func addWriters(conn *pgx.Conn, people []string, peopleMap map[string]int, crewI
 			log.Fatal(err)
 		}
 	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+func getCrewFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer wg.Done()
 
@@ -409,17 +473,27 @@ func getCrewFromLink(conn *pgx.Conn, titleMap map[string]int, peopleMap map[stri
 					}
 
 					wg.Add(2)
-					addDirectors(conn, strings.Split(row[1], ","), peopleMap, idx, wg) // Method to add directors to linking table
-					addWriters(conn, strings.Split(row[2], ","), peopleMap, idx, wg)   // Method to add writers to linking table
+					addDirectors(strings.Split(row[1], ","), peopleMap, idx, wg) // Method to add directors to linking table
+					addWriters(strings.Split(row[2], ","), peopleMap, idx, wg)   // Method to add writers to linking table
 				}
 			}
 		}
 	}
 
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	fmt.Println("Finished getting crew")
 }
 
-func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int, wg *sync.WaitGroup) {
+func getRatingsFromLink(titleMap map[string]int, wg *sync.WaitGroup) {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	defer wg.Done()
 
@@ -477,26 +551,25 @@ func getRatingsFromLink(conn *pgx.Conn, titleMap map[string]int, wg *sync.WaitGr
 	}
 
 	fmt.Println("Finished getting ratings")
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
 
 	start := time.Now()
 
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	var wg sync.WaitGroup
 
 	titleChan := make(chan map[string]int)
 	wg.Add(1)
-	go getTitlesFromLink(conn, titleChan, &wg)
+	go getTitlesFromLink(titleChan, &wg)
 
 	peopleChan := make(chan map[string]int)
 	wg.Add(1)
-	getPeopleFromLink(conn, peopleChan, &wg)
+	getPeopleFromLink(peopleChan, &wg)
 
 	wg.Wait()
 
@@ -508,10 +581,10 @@ func main() {
 
 	wg.Add(4)
 
-	go getEpisodesFromLink(conn, titleMap, &wg)
-	go getPrincipalsFromLink(conn, titleMap, peopleMap, &wg)
-	go getCrewFromLink(conn, titleMap, peopleMap, &wg)
-	go getRatingsFromLink(conn, titleMap, &wg)
+	go getEpisodesFromLink(titleMap, &wg)
+	go getPrincipalsFromLink(titleMap, peopleMap, &wg)
+	go getCrewFromLink(titleMap, peopleMap, &wg)
+	go getRatingsFromLink(titleMap, &wg)
 
 	wg.Wait()
 
