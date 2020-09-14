@@ -1,2 +1,13 @@
-go get golang.org/x/net/html
-"github.com/sirupsen/logrus"
+How to run loadDataSlow.go
+
+    1) go get "github.com/sirupsen/logrus"
+    2) go get "github.com/jackc/pgx"
+    3) Change location of files to match location of your local files. Must be absolute path.
+    4) Run go build loadDataSlow.go
+
+How to run loadDataFast.go
+
+    1) go get "github.com/sirupsen/logrus"
+    2) go get "github.com/jackc/pgx"
+    3) Change location of files to match location of your local files. Must be absolute path.
+    4) Run go build loadDataFast.go
