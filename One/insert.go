@@ -1,7 +1,7 @@
-//Daniel Moore
-//9/13/2020
-//This code fails on the second insertion and is intended to show the
-//ability of a transaction to rollback
+// Daniel Moore
+// 9/11/2020
+// This code fails on the second insertion and is intended to show the
+// ability of a transaction to rollback
 package main
 
 import (

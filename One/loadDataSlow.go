@@ -1,3 +1,7 @@
+// Daniel Moore
+// 9/10/2020
+// This code loads the data sequentially using one connection.
+// It takes roughly 6hrs and 45 minutes on my machine
 package main
 
 import (
@@ -446,26 +450,34 @@ func main() {
 
 	start := time.Now()
 
+	//Connect to db
+	// All code shares on connection
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	//Load titles and create a map of tconst to primary_key
 	titleMap := getTitlesFromLinkSlow(conn)
 	fmt.Println("Finished getting titles")
 
+	//Load people and create a map of nconst to primary_key
 	peopleMap := getPeopleFromLinkSlow(conn)
 	fmt.Println("Finished getting peoples")
 
+	//Load episodes using title map
 	getEpisodesFromLinkSlow(conn, titleMap)
 	fmt.Println("Finished getting episodes")
 
+	//Load principals using title and people map
 	getPrincipalsFromLinkSlow(conn, titleMap, peopleMap)
 	fmt.Println("Finished getting principals")
 
+	//Load crews using title and people map
 	getCrewFromLinkSlow(conn, titleMap, peopleMap)
 	fmt.Println("Finished getting crew")
 
+	//Load ratings using title map
 	getRatingsFromLinkSlow(conn, titleMap)
 	fmt.Println("Finished getting ratings")
 
