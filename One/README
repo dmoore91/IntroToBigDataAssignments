@@ -11,3 +11,5 @@ How to run loadDataFast.go
     2) go get "github.com/jackc/pgx"
     3) Change location of files to match location of your local files. Must be absolute path.
     4) Run go build loadDataFast.go
+
+Run insert.go for question 5
