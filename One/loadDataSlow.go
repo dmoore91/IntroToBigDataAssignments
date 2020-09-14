@@ -379,8 +379,8 @@ func getCrewFromLinkSlow(conn *pgx.Conn, titleMap map[string]int, peopleMap map[
 						log.Fatal(err)
 					}
 
-					addDirectors(conn, strings.Split(row[1], ","), peopleMap, idx) // Method to add directors to linking table
-					addWriters(conn, strings.Split(row[2], ","), peopleMap, idx)   // Method to add writers to linking table
+					addDirectorsSlow(conn, strings.Split(row[1], ","), peopleMap, idx) // Method to add directors to linking table
+					addWritersSlow(conn, strings.Split(row[2], ","), peopleMap, idx)   // Method to add writers to linking table
 				}
 			}
 		}
