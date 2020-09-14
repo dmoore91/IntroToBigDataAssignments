@@ -1,3 +1,7 @@
+//Daniel Moore
+//9/13/2020
+//This code fails on the second insertion and is intended to show the
+//ability of a transaction to rollback
 package main
 
 import (
@@ -12,16 +16,19 @@ func main() {
 
 	start := time.Now()
 
+	//Open up connection to database
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmentone")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	//Begin transaction
 	tx, err := conn.Begin(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	//1st insert. Is valid
 	queryString := "INSERT INTO title(titleID,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear," +
 		"runtimeMinutes,genres) " +
 		"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
@@ -31,12 +38,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 
+		//Rollback if error
 		err = tx.Rollback(context.Background())
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
+	//2nd insert. Fails and causes rollback
 	queryString = "INSERT INTO title(titleID,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear," +
 		"runtimeMinutes,genres) " +
 		"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
@@ -46,12 +55,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 
+		//Rollback if error
 		err = tx.Rollback(context.Background())
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
+	//3rd insert. Should never even be reached but is valid
 	queryString = "INSERT INTO title(titleID,titleType,primaryTitle,originalTitle,isAdult,startYear,endYear," +
 		"runtimeMinutes,genres) " +
 		"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
@@ -62,12 +73,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 
+		//Rollback if error
 		err = tx.Rollback(context.Background())
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
+	//Commit transaction
 	err = tx.Commit(context.Background())
 	if err != nil {
 		log.Fatal(err)
