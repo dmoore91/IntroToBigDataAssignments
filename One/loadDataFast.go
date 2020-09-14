@@ -1,3 +1,12 @@
+// Daniel Moore
+// 9/13/2020
+// This code loads the data in parallel. We first kick off 2 goroutines with their own connections to load in titles
+// and people. These also create the string to primary_key maps we need. Next we kick of the 4 goroutines to load
+// in crew, ratings, episodes and principals. These all have their own connections and run fully in parallel. The reason
+// they all have their own connections to the db is to prevent errors from code trying to use an occupied connection.
+// I would have liked to have addDirectors and addWriters in their own goroutines with their own connections as well
+// instead of holding up importing crews, however I only have a max of 400 database connections and the risk of
+// exceeding the max connections is too high.
 package main
 
 import (
@@ -487,6 +496,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
+	// Kick off goroutines to load titles and people. These also create the maps our other functions will need to run.
 	wg.Add(2)
 	go getTitlesFromLink(&titleMap, &wg)
 	go getPeopleFromLink(&peopleMap, &wg)
@@ -494,15 +504,18 @@ func main() {
 	fmt.Println(titleMap)
 	fmt.Println(peopleMap)
 
+	// Wait for previous 2 go routines so we know we have the maps we need
 	wg.Wait()
 
+	// Kick off goroutines to load episodes, crew, principals and ratings.
+	// These use the maps the previous goroutines created
 	wg.Add(4)
-
 	go getEpisodesFromLink(titleMap, &wg)
 	go getPrincipalsFromLink(titleMap, peopleMap, &wg)
 	go getCrewFromLink(titleMap, peopleMap, &wg)
 	go getRatingsFromLink(titleMap, &wg)
 
+	// Wait on all the goroutines to make sure we get the proper total time for loading in all the data
 	wg.Wait()
 
 	t := time.Now()
