@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
@@ -76,7 +78,10 @@ func readInTitles(m map[string]title) {
 	idx := 0
 
 	for scanner.Scan() {
-		row := strings.Split(scanner.Text(), "\t")
+		txt := scanner.Text()
+		txt = strings.ReplaceAll(txt, "\\N", "")
+
+		row := strings.Split(txt, "\t")
 		if len(row) == 9 {
 
 			id := strconv.Itoa(idx)
@@ -115,6 +120,24 @@ func addElementsToDb(m map[string]title) {
 		if err := w.Write(t.ToSlice()); err != nil {
 			log.Fatal()
 		}
+	}
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Title FROM '/home/danielmoore/Documents/College/BigData/result.csv' DELIMITER ',' CSV " +
+		"FORCE NULL(startYear, endYear, runtimeMinutes, avgRating, numVotes);"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
 	}
 }
 

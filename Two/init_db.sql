@@ -2,13 +2,13 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS Title(
     id INTEGER PRIMARY KEY ,
-    type text NOT NULL ,
-    originalTitle text NOT NULL ,
-    startYear INTEGER NOT NULL ,
-    endYear INTEGER NOT NULL ,
-    runtimeMinutes INTEGER NOT NULL ,
-    avgRating DECIMAL NOT NULL ,
-    numVotes INTEGER NOT NULL
+    type text ,
+    originalTitle text ,
+    startYear INTEGER  ,
+    endYear INTEGER ,
+    runtimeMinutes INTEGER ,
+    avgRating DECIMAL ,
+    numVotes INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS Genre(
