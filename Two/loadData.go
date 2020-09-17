@@ -80,6 +80,7 @@ func readInTitles(m map[string]title, wg *sync.WaitGroup) {
 	for scanner.Scan() {
 		row := strings.Split(scanner.Text(), "\t")
 		if len(row) == 9 {
+			print("test")
 
 			id := strconv.Itoa(idx)
 
@@ -130,8 +131,8 @@ func populateTitleTable(wg *sync.WaitGroup) {
 	var titleWaitgroup sync.WaitGroup
 
 	titleWaitgroup.Add(2)
-	go readInRatings(titles, &titleWaitgroup)
 	go readInTitles(titles, &titleWaitgroup)
+	go readInRatings(titles, &titleWaitgroup)
 
 	titleWaitgroup.Wait()
 
