@@ -2,14 +2,13 @@ package main
 
 import (
 	"bytes"
-	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"github.com/deroproject/graviton"
-	"github.com/jackc/pgx"
-	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,14 +16,29 @@ import (
 )
 
 type title struct {
-	Id             int
+	Id             string
 	TitleType      string
 	OriginalTitle  string
-	StartYear      int
-	EndYear        int
-	RuntimeMinutes int
-	AvgRating      decimal.Decimal
-	NumVotes       int
+	StartYear      string
+	EndYear        string
+	RuntimeMinutes string
+	AvgRating      string
+	NumVotes       string
+}
+
+func (t title) ToSlice() []string {
+	var items []string
+
+	items = append(items, t.Id)
+	items = append(items, t.TitleType)
+	items = append(items, t.OriginalTitle)
+	items = append(items, t.StartYear)
+	items = append(items, t.EndYear)
+	items = append(items, t.RuntimeMinutes)
+	items = append(items, t.AvgRating)
+	items = append(items, t.NumVotes)
+
+	return items
 }
 
 //This function is used to put t into the tconst location in the Badger database. It just overwrites
@@ -85,19 +99,9 @@ func readInRatings(tree *graviton.Tree, wg *sync.WaitGroup) {
 		if idx != 0 && idx != numLines-1 {
 			row := strings.Split(elem, "\t")
 
-			avgRating, err := decimal.NewFromString(row[1])
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			numVotes, err := strconv.Atoi(row[2])
-			if err != nil {
-				log.Fatal(err)
-			}
-
 			t := getKey(tree, row[0])
-			t.AvgRating = avgRating
-			t.NumVotes = numVotes
+			t.AvgRating = row[1]
+			t.NumVotes = row[2]
 
 			updateKey(tree, row[0], t)
 		}
@@ -122,28 +126,15 @@ func readInTitles(tree *graviton.Tree, wg *sync.WaitGroup) {
 		if idx != 0 && idx != numLines-1 {
 			row := strings.Split(elem, "\t")
 
-			startYear, err := strconv.Atoi(row[5])
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			endYear, err := strconv.Atoi(row[6])
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			runtimeMinutes, err := strconv.Atoi(row[7])
-			if err != nil {
-				log.Fatal(err)
-			}
+			id := strconv.Itoa(idx)
 
 			t := getKey(tree, row[0])
-			t.Id = idx
+			t.Id = id
 			t.TitleType = row[1]
 			t.OriginalTitle = row[3]
-			t.StartYear = startYear
-			t.EndYear = endYear
-			t.RuntimeMinutes = runtimeMinutes
+			t.StartYear = row[5]
+			t.EndYear = row[6]
+			t.RuntimeMinutes = row[7]
 
 			updateKey(tree, row[0], t)
 
@@ -157,11 +148,13 @@ func addElementsToDb(tree *graviton.Tree, wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	//Establish connection to postgres db
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	file, err := os.Create("result.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
 
 	c := tree.Cursor()
 
@@ -176,19 +169,8 @@ func addElementsToDb(tree *graviton.Tree, wg *sync.WaitGroup) {
 			log.Fatal(err)
 		}
 
-		queryString := "INSERT INTO Title(id, type, originalTitle, startYear, endYear, runtimeMinutes, " +
-			"avgRating, numVotes) " +
-			"VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
-
-		commandTag, err := conn.Exec(context.Background(), queryString, t.Id, t.TitleType, t.OriginalTitle, t.StartYear,
-			t.EndYear, t.RuntimeMinutes, t.AvgRating, t.NumVotes)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if commandTag.RowsAffected() == 0 {
-			log.Fatal(err)
+		if err := w.Write(t.ToSlice()); err != nil {
+			log.Fatal()
 		}
 	}
 }
