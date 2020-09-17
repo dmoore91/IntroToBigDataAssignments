@@ -39,7 +39,7 @@ func (t title) ToSlice() []string {
 }
 
 //Reads ratings file into graviton db
-func readInRatings(m map[string]title, wg *sync.WaitGroup) {
+func readInRatings(m map[string]title) {
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/ratings.tsv")
 	if err != nil {
@@ -60,12 +60,10 @@ func readInRatings(m map[string]title, wg *sync.WaitGroup) {
 			m[row[0]] = t
 		}
 	}
-
-	wg.Done()
 }
 
 //Reads titles file into graviton db
-func readInTitles(m map[string]title, wg *sync.WaitGroup) {
+func readInTitles(m map[string]title) {
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/title.tsv")
 	if err != nil {
@@ -80,7 +78,6 @@ func readInTitles(m map[string]title, wg *sync.WaitGroup) {
 	for scanner.Scan() {
 		row := strings.Split(scanner.Text(), "\t")
 		if len(row) == 9 {
-			print("test")
 
 			id := strconv.Itoa(idx)
 
@@ -94,15 +91,16 @@ func readInTitles(m map[string]title, wg *sync.WaitGroup) {
 
 			m[row[0]] = t
 
+			idx += 1
+
 			//TODO Kick off goroutine to add genres to table. And link table with genres
 		}
 	}
 
-	wg.Done()
 }
 
 //Iterates through all elements in db and
-func addElementsToDb(m map[string]title, wg *sync.WaitGroup) {
+func addElementsToDb(m map[string]title) {
 
 	file, err := os.Create("result.csv")
 	if err != nil {
@@ -118,7 +116,6 @@ func addElementsToDb(m map[string]title, wg *sync.WaitGroup) {
 			log.Fatal()
 		}
 	}
-	wg.Done()
 }
 
 func populateTitleTable(wg *sync.WaitGroup) {
@@ -127,19 +124,9 @@ func populateTitleTable(wg *sync.WaitGroup) {
 
 	titles := make(map[string]title)
 
-	//Internal waitgroup for title related threads
-	var titleWaitgroup sync.WaitGroup
-
-	titleWaitgroup.Add(2)
-	go readInTitles(titles, &titleWaitgroup)
-	go readInRatings(titles, &titleWaitgroup)
-
-	titleWaitgroup.Wait()
-
-	titleWaitgroup.Add(1)
-	go addElementsToDb(titles, &titleWaitgroup)
-
-	titleWaitgroup.Wait() //Wait to finish adding all elements
+	readInTitles(titles)
+	readInRatings(titles)
+	addElementsToDb(titles)
 }
 
 func main() {
