@@ -29,7 +29,7 @@ func getTitlesFromLink(titleMap *map[string]int, wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.basics.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func getEpisodesFromLink(m map[string]int, wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.episode.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\episode.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func getPeopleFromLink(peopleMap *map[string]int, wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\name.basics.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\name.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func getPrincipalsFromLink(titleMap map[string]int, peopleMap map[string]int, wg
 
 	defer wg.Done()
 
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.principals.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\principals.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -384,7 +384,7 @@ func getCrewFromLink(titleMap map[string]int, peopleMap map[string]int, wg *sync
 
 	defer wg.Done()
 
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.crew.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\crew.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func getRatingsFromLink(titleMap map[string]int, wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.ratings.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\ratings.tsv\\data.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
-	"github.com/deroproject/graviton"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -41,94 +38,52 @@ func (t title) ToSlice() []string {
 	return items
 }
 
-//This function is used to put t into the tconst location in the Badger database. It just overwrites
-//whatever is already there
-//i.e. {tconst: t}
-func updateKey(tree *graviton.Tree, tconst string, t title) {
-
-	reqBodyBytes := new(bytes.Buffer)
-	err := json.NewEncoder(reqBodyBytes).Encode(t)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = tree.Put([]byte(tconst), reqBodyBytes.Bytes())
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-//This function is takes a tconst and returns the corresponding struct
-//i.e. {tconst: t}
-func getKey(tree *graviton.Tree, tconst string) title {
-
-	v, err := tree.Get([]byte(tconst))
-	if err != nil {
-		log.Fatal(err)
-		return title{}
-	}
-
-	r := bytes.NewReader(v)
-
-	var t title
-
-	err = json.NewDecoder(r).Decode(t)
-	if err != nil {
-		log.Fatal(err)
-		return title{}
-	}
-
-	return t
-}
-
 //Reads ratings file into graviton db
-func readInRatings(tree *graviton.Tree, wg *sync.WaitGroup) {
-	defer wg.Done()
+func readInRatings(m map[string]title, wg *sync.WaitGroup) {
 
-	data, err := ioutil.ReadFile("title.ratings.tsv")
+	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/ratings.tsv")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
+	defer file.Close()
 
-	uncompressedString := string(data)
+	scanner := bufio.NewScanner(file)
 
-	lines := strings.Split(uncompressedString, "\n")
-	numLines := len(lines)
+	for scanner.Scan() {
+		row := strings.Split(scanner.Text(), "\t")
+		if len(row) == 3 {
 
-	for idx, elem := range lines {
-		if idx != 0 && idx != numLines-1 {
-			row := strings.Split(elem, "\t")
-
-			t := getKey(tree, row[0])
+			t := m[row[0]]
 			t.AvgRating = row[1]
 			t.NumVotes = row[2]
 
-			updateKey(tree, row[0], t)
+			m[row[0]] = t
 		}
 	}
+
+	wg.Done()
 }
 
 //Reads titles file into graviton db
-func readInTitles(tree *graviton.Tree, wg *sync.WaitGroup) {
-	defer wg.Done()
+func readInTitles(m map[string]title, wg *sync.WaitGroup) {
 
-	data, err := ioutil.ReadFile("title.basics.tsv")
+	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/title.tsv")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
 	}
+	defer file.Close()
 
-	uncompressedString := string(data)
+	scanner := bufio.NewScanner(file)
 
-	lines := strings.Split(uncompressedString, "\n")
-	numLines := len(lines)
+	idx := 0
 
-	for idx, elem := range lines {
-		if idx != 0 && idx != numLines-1 {
-			row := strings.Split(elem, "\t")
+	for scanner.Scan() {
+		row := strings.Split(scanner.Text(), "\t")
+		if len(row) == 9 {
 
 			id := strconv.Itoa(idx)
 
-			t := getKey(tree, row[0])
+			t := m[row[0]]
 			t.Id = id
 			t.TitleType = row[1]
 			t.OriginalTitle = row[3]
@@ -136,17 +91,17 @@ func readInTitles(tree *graviton.Tree, wg *sync.WaitGroup) {
 			t.EndYear = row[6]
 			t.RuntimeMinutes = row[7]
 
-			updateKey(tree, row[0], t)
+			m[row[0]] = t
 
 			//TODO Kick off goroutine to add genres to table. And link table with genres
 		}
 	}
+
+	wg.Done()
 }
 
 //Iterates through all elements in db and
-func addElementsToDb(tree *graviton.Tree, wg *sync.WaitGroup) {
-
-	defer wg.Done()
+func addElementsToDb(m map[string]title, wg *sync.WaitGroup) {
 
 	file, err := os.Create("result.csv")
 	if err != nil {
@@ -156,56 +111,32 @@ func addElementsToDb(tree *graviton.Tree, wg *sync.WaitGroup) {
 
 	w := csv.NewWriter(file)
 
-	c := tree.Cursor()
-
-	for k, v, err := c.First(); err == nil; k, v, err = c.Next() {
-		_ = k //Needed to make Go think I'm using k. Literally just assigns k to nothing
-		r := bytes.NewReader(v)
-
-		var t title
-
-		err = json.NewDecoder(r).Decode(t)
-		if err != nil {
-			log.Fatal(err)
-		}
-
+	for k, t := range m {
+		_ = k
 		if err := w.Write(t.ToSlice()); err != nil {
 			log.Fatal()
 		}
 	}
+	wg.Done()
 }
 
 func populateTitleTable(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	//Key-Value database that allows for very fast full tree traversal which is going to be very important
-	store, err := graviton.NewMemStore()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ss, err := store.LoadSnapshot(0) // load most recent snapshot
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tree, err := ss.GetTree("root")
-	if err != nil {
-		log.Fatal(err)
-	}
+	titles := make(map[string]title)
 
 	//Internal waitgroup for title related threads
 	var titleWaitgroup sync.WaitGroup
 
 	titleWaitgroup.Add(2)
-	go readInRatings(tree, &titleWaitgroup)
-	go readInTitles(tree, &titleWaitgroup)
+	go readInRatings(titles, &titleWaitgroup)
+	go readInTitles(titles, &titleWaitgroup)
 
 	titleWaitgroup.Wait()
 
 	titleWaitgroup.Add(1)
-	go addElementsToDb(tree, &titleWaitgroup)
+	go addElementsToDb(titles, &titleWaitgroup)
 
 	titleWaitgroup.Wait() //Wait to finish adding all elements
 }
