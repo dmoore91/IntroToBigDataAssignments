@@ -88,13 +88,11 @@ func readInRatings(m map[string]title) map[string]title {
 	return m
 }
 
-func processGenres(genres map[string]int, genreList []string, titleID string, w *csv.Writer) {
-
-	genreNumber := 0
+func processGenres(genres map[string]int, genreList []string, titleID string, w *csv.Writer, genreNumber int) (map[string]int, int) {
 
 	for _, elem := range genreList {
 		genreID, ok := genres[elem]
-		if ok {
+		if !ok {
 			genres[elem] = genreNumber
 			genreID = genreNumber
 			genreNumber += 1
@@ -110,6 +108,12 @@ func processGenres(genres map[string]int, genreList []string, titleID string, w 
 			log.Fatal(err)
 		}
 	}
+
+	return genres, genreNumber
+}
+
+func readGenresIntoDB(genres map[string]int) {
+	fmt.Println(genres)
 }
 
 //Reads titles file into graviton db
@@ -128,6 +132,7 @@ func readInTitles(m map[string]title) map[string]title {
 	scanner.Scan()
 
 	idx := 0
+	genreNumber := 0
 
 	file, err = os.Create("Two/genre.csv")
 	if err != nil {
@@ -136,7 +141,6 @@ func readInTitles(m map[string]title) map[string]title {
 	defer file.Close()
 
 	w := csv.NewWriter(file)
-
 	for scanner.Scan() {
 		txt := scanner.Text()
 
@@ -170,10 +174,12 @@ func readInTitles(m map[string]title) map[string]title {
 
 				idx += 1
 
-				processGenres(genres, strings.Split(row[8], ","), t.Id, w)
+				genres, genreNumber = processGenres(genres, strings.Split(row[8], ","), t.Id, w, genreNumber)
 			}
 		}
 	}
+
+	readGenresIntoDB(genres)
 
 	return m
 }
@@ -226,8 +232,8 @@ func populateTitleTable(wg *sync.WaitGroup) {
 	titles := make(map[string]title)
 
 	titles = readInTitles(titles)
-	titles = readInRatings(titles)
-	addElementsToDb(titles)
+	//titles = readInRatings(titles)
+	//addElementsToDb(titles)
 }
 
 func main() {
