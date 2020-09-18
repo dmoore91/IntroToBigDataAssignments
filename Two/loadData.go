@@ -41,7 +41,7 @@ func (t title) ToSlice() []string {
 }
 
 //Reads ratings file into graviton db
-func readInRatings(m map[string]title) {
+func readInRatings(m map[string]title) map[string]title {
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/ratings.tsv")
 	if err != nil {
@@ -52,7 +52,20 @@ func readInRatings(m map[string]title) {
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		row := strings.Split(scanner.Text(), "\t")
+		txt := scanner.Text()
+
+		i := strings.Index(txt, "\\N")
+
+		for {
+			if i == -1 {
+				break
+			}
+
+			txt = txt[:i] + txt[i+2:]
+			i = strings.Index(txt, "\\N")
+		}
+
+		row := strings.Split(txt, "\t")
 		if len(row) == 3 {
 
 			t := m[row[0]]
@@ -62,10 +75,38 @@ func readInRatings(m map[string]title) {
 			m[row[0]] = t
 		}
 	}
+
+	return m
+}
+
+func processGenres(genres map[string]int, genreList []string, titleID string, w *csv.Writer) {
+
+	genreNumber := 0
+
+	for _, elem := range genreList {
+		genreID, ok := genres[elem]
+		if ok {
+			genres[elem] = genreNumber
+			genreID = genreNumber
+			genreNumber += 1
+		}
+
+		var line []string
+
+		line = append(line, titleID)
+		line = append(line, strconv.Itoa(genreID))
+
+		err := w.Write(line)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 //Reads titles file into graviton db
-func readInTitles(m map[string]title) {
+func readInTitles(m map[string]title) map[string]title {
+
+	genres := make(map[string]int)
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/title.tsv")
 	if err != nil {
@@ -75,39 +116,63 @@ func readInTitles(m map[string]title) {
 
 	scanner := bufio.NewScanner(file)
 
+	scanner.Scan()
+
 	idx := 0
+
+	file, err = os.Create("Two/genre.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
 
 	for scanner.Scan() {
 		txt := scanner.Text()
-		txt = strings.ReplaceAll(txt, "\\N", "")
 
-		row := strings.Split(txt, "\t")
-		if len(row) == 9 {
+		if !strings.Contains(txt, "startyear") {
+			i := strings.Index(txt, "\\N")
 
-			id := strconv.Itoa(idx)
+			for {
+				if i == -1 {
+					break
+				}
 
-			t := m[row[0]]
-			t.Id = id
-			t.TitleType = row[1]
-			t.OriginalTitle = row[3]
-			t.StartYear = row[5]
-			t.EndYear = row[6]
-			t.RuntimeMinutes = row[7]
+				txt = txt[:i] + txt[i+2:]
+				i = strings.Index(txt, "\\N")
+			}
 
-			m[row[0]] = t
+			row := strings.Split(txt, "\t")
+			if len(row) == 9 {
 
-			idx += 1
+				id := strconv.Itoa(idx)
 
-			//TODO Kick off goroutine to add genres to table. And link table with genres
+				t := title{
+					Id:             id,
+					TitleType:      row[1],
+					OriginalTitle:  row[3],
+					StartYear:      row[5],
+					EndYear:        row[6],
+					RuntimeMinutes: row[7],
+				}
+
+				m[row[0]] = t
+
+				idx += 1
+
+				processGenres(genres, strings.Split(row[8], ","), t.Id, w)
+			}
 		}
 	}
 
+	return m
 }
 
 //Iterates through all elements in db and
 func addElementsToDb(m map[string]title) {
 
-	file, err := os.Create("result.csv")
+	file, err := os.Create("Two/result.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -127,10 +192,21 @@ func addElementsToDb(m map[string]title) {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title FROM '/home/danielmoore/Documents/College/BigData/result.csv' DELIMITER ',' CSV " +
-		"FORCE NULL(startYear, endYear, runtimeMinutes, avgRating, numVotes);"
+	queryString := "COPY Title FROM '/home/danielmoore/Documents/College/BigData/Two/result.csv' DELIMITER ',' CSV;"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	queryString = "COPY Title FROM '/home/danielmoore/Documents/College/BigData/Two/genre.csv' DELIMITER ',' CSV;"
+
+	commandTag, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
 		log.Fatal(err)
@@ -147,8 +223,8 @@ func populateTitleTable(wg *sync.WaitGroup) {
 
 	titles := make(map[string]title)
 
-	readInTitles(titles)
-	readInRatings(titles)
+	titles = readInTitles(titles)
+	titles = readInRatings(titles)
 	addElementsToDb(titles)
 }
 
