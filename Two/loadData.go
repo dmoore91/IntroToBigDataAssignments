@@ -25,19 +25,26 @@ type title struct {
 	NumVotes       string
 }
 
-func (t title) ToSlice() []string {
-	var items []string
+func (t title) ToTSVString() string {
+	builder := strings.Builder{}
 
-	items = append(items, t.Id)
-	items = append(items, t.TitleType)
-	items = append(items, t.OriginalTitle)
-	items = append(items, t.StartYear)
-	items = append(items, t.EndYear)
-	items = append(items, t.RuntimeMinutes)
-	items = append(items, t.AvgRating)
-	items = append(items, t.NumVotes)
+	builder.WriteString(t.Id)
+	builder.WriteString("\t")
+	builder.WriteString(t.TitleType)
+	builder.WriteString("\t")
+	builder.WriteString(t.OriginalTitle)
+	builder.WriteString("\t")
+	builder.WriteString(t.StartYear)
+	builder.WriteString("\t")
+	builder.WriteString(t.EndYear)
+	builder.WriteString("\t")
+	builder.WriteString(t.RuntimeMinutes)
+	builder.WriteString("\t")
+	builder.WriteString(t.AvgRating)
+	builder.WriteString("\t")
+	builder.WriteString(t.NumVotes)
 
-	return items
+	return builder.String()
 }
 
 //Reads ratings file into graviton db
@@ -65,14 +72,16 @@ func readInRatings(m map[string]title) map[string]title {
 			i = strings.Index(txt, "\\N")
 		}
 
-		row := strings.Split(txt, "\t")
-		if len(row) == 3 {
+		if !strings.Contains(txt, "averageRating") {
+			row := strings.Split(txt, "\t")
+			if len(row) == 3 {
 
-			t := m[row[0]]
-			t.AvgRating = row[1]
-			t.NumVotes = row[2]
+				t := m[row[0]]
+				t.AvgRating = row[1]
+				t.NumVotes = row[2]
 
-			m[row[0]] = t
+				m[row[0]] = t
+			}
 		}
 	}
 
@@ -172,17 +181,20 @@ func readInTitles(m map[string]title) map[string]title {
 //Iterates through all elements in db and
 func addElementsToDb(m map[string]title) {
 
-	file, err := os.Create("Two/result.csv")
+	file, err := os.Create("Two/result.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
 
-	w := csv.NewWriter(file)
+	for _, t := range m {
+		_, err := file.WriteString(t.ToTSVString())
+		if err != nil {
+			log.Fatal()
+		}
 
-	for k, t := range m {
-		_ = k
-		if err := w.Write(t.ToSlice()); err != nil {
+		_, err = file.WriteString("\n")
+		if err != nil {
 			log.Fatal()
 		}
 	}
@@ -192,7 +204,8 @@ func addElementsToDb(m map[string]title) {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title FROM '/home/danielmoore/Documents/College/BigData/Two/result.csv' DELIMITER ',' CSV;"
+	queryString := "COPY Title FROM '/home/danielmoore/Documents/College/BigData/Two/result.tsv' " +
+		"WITH (DELIMITER E'\\t', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
@@ -204,17 +217,6 @@ func addElementsToDb(m map[string]title) {
 		log.Fatal(err)
 	}
 
-	queryString = "COPY Title FROM '/home/danielmoore/Documents/College/BigData/Two/genre.csv' DELIMITER ',' CSV;"
-
-	commandTag, err = conn.Exec(context.Background(), queryString)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
-	}
 }
 
 func populateTitleTable(wg *sync.WaitGroup) {
