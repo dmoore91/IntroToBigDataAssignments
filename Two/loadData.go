@@ -113,7 +113,31 @@ func processGenres(genres map[string]int, genreList []string, titleID string, w 
 }
 
 func readGenresIntoDB(genres map[string]int) {
-	fmt.Println(genres)
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for genre, id := range genres {
+		queryString := "INSERT INTO Genre(id, genre) " +
+			"VALUES($1, $2)"
+
+		commandTag, err := conn.Exec(context.Background(), queryString, id, genre)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if commandTag.RowsAffected() == 0 {
+			log.Fatal(err)
+		}
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 //Reads titles file into graviton db
@@ -185,7 +209,7 @@ func readInTitles(m map[string]title) map[string]title {
 }
 
 //Iterates through all elements in db and
-func addElementsToDb(m map[string]title) {
+func addTitlesToDb(m map[string]title) {
 
 	file, err := os.Create("Two/result.tsv")
 	if err != nil {
@@ -223,6 +247,38 @@ func addElementsToDb(m map[string]title) {
 		log.Fatal(err)
 	}
 
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func addGenreToTableLink() {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Title_Genre FROM '/home/danielmoore/Documents/College/BigData/Two/genre.csv' " +
+		"WITH (DELIMITER ',', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func populateTitleTable(wg *sync.WaitGroup) {
@@ -232,8 +288,9 @@ func populateTitleTable(wg *sync.WaitGroup) {
 	titles := make(map[string]title)
 
 	titles = readInTitles(titles)
-	//titles = readInRatings(titles)
-	//addElementsToDb(titles)
+	titles = readInRatings(titles)
+	addTitlesToDb(titles)
+	addGenreToTableLink()
 }
 
 func main() {
