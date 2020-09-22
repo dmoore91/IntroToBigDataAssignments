@@ -146,7 +146,9 @@ func readGenresIntoDB(genres map[string]int) {
 }
 
 //Reads titles file into graviton db
-func readInTitles(m map[string]title) map[string]title {
+func readInTitles(m map[string]title) (map[string]title, map[string]int) {
+
+	titleIds := make(map[string]int)
 
 	genres := make(map[string]int)
 
@@ -160,8 +162,8 @@ func readInTitles(m map[string]title) map[string]title {
 
 	scanner.Scan()
 
-	idx := 0
-	genreNumber := 0
+	idx := 1
+	genreNumber := 1
 
 	genreFile, err := os.Create("Two/genre.csv")
 	if err != nil {
@@ -190,6 +192,8 @@ func readInTitles(m map[string]title) map[string]title {
 
 				id := strconv.Itoa(idx)
 
+				titleIds[row[0]] = idx
+
 				t := title{
 					Id:             id,
 					TitleType:      row[1],
@@ -213,7 +217,7 @@ func readInTitles(m map[string]title) map[string]title {
 
 	readGenresIntoDB(genres)
 
-	return m
+	return m, titleIds
 }
 
 //Iterates through all elements in db and
@@ -289,21 +293,50 @@ func addGenreToTableLink() {
 
 }
 
-func populateTitleTable() {
+func populateTitleTable() map[string]int {
 
 	titles := make(map[string]title)
 
-	titles = readInTitles(titles)
+	titles, titleIds := readInTitles(titles)
 	titles = readInRatings(titles)
 	addTitlesToDb(titles)
 	addGenreToTableLink()
+
+	return titleIds
+}
+
+func addMembersToDB() {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Member FROM '/home/danielmoore/Documents/College/BigData/Two/member.tsv' " +
+		"WITH (DELIMITER E'\\t', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func getNamesMap() map[string]person {
 
 	people := make(map[string]person)
 
-	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/title.tsv")
+	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/name.tsv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -313,10 +346,20 @@ func getNamesMap() map[string]person {
 
 	scanner.Scan()
 
+	idx := 1
+
+	file, err = os.Create("Two/member.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+	w.Comma = '\t'
 	for scanner.Scan() {
 		txt := scanner.Text()
 
-		if !strings.Contains(txt, "nconst") && txt != "" {
+		if txt != "" {
 			i := strings.Index(txt, "\\N")
 
 			for {
@@ -338,9 +381,27 @@ func getNamesMap() map[string]person {
 				}
 
 				people[row[0]] = p
+
+				var line []string
+
+				line = append(line, strconv.Itoa(idx))
+				line = append(line, p.PrimaryName)
+				line = append(line, p.BirthYear)
+				line = append(line, p.DeathYear)
+
+				err := w.Write(line)
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 		}
+
+		idx += 1
 	}
+
+	w.Flush()
+
+	addMembersToDB()
 
 	return people
 }
@@ -349,9 +410,9 @@ func main() {
 
 	start := time.Now()
 
-	//populateTitleTable()
+	//titleIds := populateTitleTable()
 
-	people := getNamesMap()
+	_ = getNamesMap()
 
 	t := time.Now()
 	elapsed := t.Sub(start)

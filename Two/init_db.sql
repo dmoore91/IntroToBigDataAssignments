@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS Title_Genre(
 );
 
 CREATE TABLE IF NOT EXISTS Member(
-    id SERIAL PRIMARY KEY ,
+    id INTEGER PRIMARY KEY ,
     name text NOT NULL ,
-    birthYear INTEGER NOT NULL ,
-    deathYear INTEGER NOT NULL
+    birthYear INTEGER ,
+    deathYear INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS Title_Actor(
