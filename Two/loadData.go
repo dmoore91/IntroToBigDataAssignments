@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type title struct {
 }
 
 type person struct {
+	MemberID    int
 	PrimaryName string
 	BirthYear   string
 	DeathYear   string
@@ -293,7 +295,9 @@ func addGenreToTableLink() {
 
 }
 
-func populateTitleTable() map[string]int {
+func populateTitleTable(wg *sync.WaitGroup) map[string]int {
+
+	defer wg.Done()
 
 	titles := make(map[string]title)
 
@@ -332,7 +336,9 @@ func addMembersToDB() {
 
 }
 
-func getNamesMap() map[string]person {
+func getNamesMap(wg *sync.WaitGroup) map[string]person {
+
+	defer wg.Done()
 
 	people := make(map[string]person)
 
@@ -345,7 +351,6 @@ func getNamesMap() map[string]person {
 	scanner := bufio.NewScanner(file)
 
 	scanner.Scan()
-
 	idx := 1
 
 	file, err = os.Create("Two/member.tsv")
@@ -375,6 +380,7 @@ func getNamesMap() map[string]person {
 			if len(row) == 6 {
 
 				p := person{
+					MemberID:    idx,
 					PrimaryName: row[1],
 					BirthYear:   row[2],
 					DeathYear:   row[3],
@@ -406,13 +412,153 @@ func getNamesMap() map[string]person {
 	return people
 }
 
+func readInCrewTSV(people map[string]person, titleIds map[string]int) {
+
+	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/crew.tsv")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Scan()
+
+	wFile, err := os.Create("Two/title_writer.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer wFile.Close()
+
+	writerWriter := csv.NewWriter(wFile)
+
+	dFile, err := os.Create("Two/title_director.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dFile.Close()
+
+	dWriter := csv.NewWriter(dFile)
+	for scanner.Scan() {
+		txt := scanner.Text()
+
+		if txt != "" {
+			i := strings.Index(txt, "\\N")
+
+			for {
+				if i == -1 {
+					break
+				}
+
+				txt = txt[:i] + txt[i+2:]
+				i = strings.Index(txt, "\\N")
+			}
+
+			row := strings.Split(txt, "\t")
+			if len(row) == 3 {
+
+				titleId := titleIds[row[0]] // Get titleID from tconst
+
+				directors := strings.Split(row[1], ",")
+
+				for _, elem := range directors {
+					var lines []string
+
+					p, ok := people[elem]
+
+					// Have to add this part since sometimes they aren't in members
+					if ok {
+						lines = append(lines, strconv.Itoa(p.MemberID))
+						lines = append(lines, strconv.Itoa(titleId))
+
+						err := dWriter.Write(lines)
+						if err != nil {
+							log.Fatal(err)
+						}
+					}
+				}
+
+				writers := strings.Split(row[2], ",")
+
+				for _, elem := range writers {
+					var lines []string
+
+					p, ok := people[elem]
+
+					// Have to add this part since sometimes they aren't in members
+					if ok {
+						lines = append(lines, strconv.Itoa(p.MemberID))
+						lines = append(lines, strconv.Itoa(titleId))
+
+						err := writerWriter.Write(lines)
+						if err != nil {
+							log.Fatal(err)
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	writerWriter.Flush()
+	dWriter.Flush()
+
+	addDirectorsAndWritersToDB()
+}
+
+func addDirectorsAndWritersToDB() {
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Title_Writer FROM '/home/danielmoore/Documents/College/BigData/Two/title_writer.csv' " +
+		"WITH (DELIMITER ',', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	queryString = "COPY Title_Director FROM '/home/danielmoore/Documents/College/BigData/Two/title_director.csv' " +
+		"WITH (DELIMITER ',', NULL '');"
+
+	commandTag, err = conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 
 	start := time.Now()
 
-	//titleIds := populateTitleTable()
+	wg := new(sync.WaitGroup)
 
-	_ = getNamesMap()
+	//These two can be ran independently
+	wg.Add(2)
+	titleIds := populateTitleTable(wg)
+	people := getNamesMap(wg)
+
+	wg.Wait()
+
+	readInCrewTSV(people, titleIds)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
