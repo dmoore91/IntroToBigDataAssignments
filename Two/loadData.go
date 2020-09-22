@@ -158,17 +158,17 @@ func readInTitles(m map[string]title) map[string]title {
 	idx := 0
 	genreNumber := 0
 
-	file, err = os.Create("Two/genre.csv")
+	genreFile, err := os.Create("Two/genre.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
+	defer genreFile.Close()
 
-	w := csv.NewWriter(file)
+	w := csv.NewWriter(genreFile)
 	for scanner.Scan() {
 		txt := scanner.Text()
 
-		if !strings.Contains(txt, "startyear") {
+		if !strings.Contains(txt, "startyear") && txt != "" {
 			i := strings.Index(txt, "\\N")
 
 			for {
@@ -202,6 +202,9 @@ func readInTitles(m map[string]title) map[string]title {
 			}
 		}
 	}
+
+	//Make sure all line get written to file
+	w.Flush()
 
 	readGenresIntoDB(genres)
 
