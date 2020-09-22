@@ -10,7 +10,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -23,6 +22,12 @@ type title struct {
 	RuntimeMinutes string
 	AvgRating      string
 	NumVotes       string
+}
+
+type person struct {
+	PrimaryName string
+	BirthYear   string
+	DeathYear   string
 }
 
 func (t title) ToTSVString() string {
@@ -284,9 +289,7 @@ func addGenreToTableLink() {
 
 }
 
-func populateTitleTable(wg *sync.WaitGroup) {
-
-	defer wg.Done()
+func populateTitleTable() {
 
 	titles := make(map[string]title)
 
@@ -296,16 +299,59 @@ func populateTitleTable(wg *sync.WaitGroup) {
 	addGenreToTableLink()
 }
 
+func getNamesMap() map[string]person {
+
+	people := make(map[string]person)
+
+	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/title.tsv")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Scan()
+
+	for scanner.Scan() {
+		txt := scanner.Text()
+
+		if !strings.Contains(txt, "nconst") && txt != "" {
+			i := strings.Index(txt, "\\N")
+
+			for {
+				if i == -1 {
+					break
+				}
+
+				txt = txt[:i] + txt[i+2:]
+				i = strings.Index(txt, "\\N")
+			}
+
+			row := strings.Split(txt, "\t")
+			if len(row) == 6 {
+
+				p := person{
+					PrimaryName: row[1],
+					BirthYear:   row[2],
+					DeathYear:   row[3],
+				}
+
+				people[row[0]] = p
+			}
+		}
+	}
+
+	return people
+}
+
 func main() {
 
 	start := time.Now()
 
-	var wg sync.WaitGroup
+	//populateTitleTable()
 
-	wg.Add(1)
-	go populateTitleTable(&wg)
-
-	wg.Wait()
+	people := getNamesMap()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
