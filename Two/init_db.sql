@@ -69,18 +69,14 @@ CREATE TABLE IF NOT EXISTS Title_Producer(
 );
 
 CREATE TABLE IF NOT EXISTS Role(
-    id SERIAL PRIMARY KEY ,
+    id INTEGER PRIMARY KEY ,
     role VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Actor_Title_Role(
     actor INTEGER NOT NULL ,
     title INTEGER NOT NULL ,
-    role INTEGER NOT NULL ,
-    FOREIGN KEY(role)
-        REFERENCES Role(id) ,
-    FOREIGN KEY(actor, title)
-        REFERENCES Title_Actor(actor, title)
+    role INTEGER NOT NULL
 );
 
 COMMIT;
