@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -458,7 +459,9 @@ func addDirectorsToDB() {
 	}
 }
 
-func readInCrewTSV(people map[string]person, titleIds map[string]int) {
+func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
+
+	defer wg.Done()
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/crew.tsv")
 	if err != nil {
@@ -687,7 +690,9 @@ func addActorTitleRoleToDB() {
 
 }
 
-func readInActorsAndProducers(people map[string]person, titleIds map[string]int) {
+func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
+
+	defer wg.Done()
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/principals.tsv")
 	if err != nil {
@@ -822,8 +827,13 @@ func main() {
 	titleIds := populateTitleTable()
 	people := getNamesMap()
 
-	readInCrewTSV(people, titleIds)
-	readInActorsAndProducers(people, titleIds)
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
+	readInCrewTSV(wg, people, titleIds)
+	readInActorsAndProducers(wg, people, titleIds)
+
+	wg.Wait()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
