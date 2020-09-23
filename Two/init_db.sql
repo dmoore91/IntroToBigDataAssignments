@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS Title_Producer(
 );
 
 CREATE TABLE IF NOT EXISTS Role(
-    id INTEGER PRIMARY KEY ,
+    id SERIAL PRIMARY KEY ,
     role text NOT NULL
 );
 

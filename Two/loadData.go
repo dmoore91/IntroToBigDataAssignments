@@ -10,7 +10,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -295,7 +294,7 @@ func addGenreToTableLink() {
 
 }
 
-func populateTitleTable(result chan map[string]int) {
+func populateTitleTable() map[string]int {
 
 	titles := make(map[string]title)
 
@@ -304,7 +303,7 @@ func populateTitleTable(result chan map[string]int) {
 	addTitlesToDb(titles)
 	addGenreToTableLink()
 
-	result <- titleIds
+	return titleIds
 }
 
 func addMembersToDB() {
@@ -334,7 +333,7 @@ func addMembersToDB() {
 
 }
 
-func getNamesMap(result chan map[string]person) {
+func getNamesMap() map[string]person {
 
 	people := make(map[string]person)
 
@@ -347,6 +346,7 @@ func getNamesMap(result chan map[string]person) {
 	scanner := bufio.NewScanner(file)
 
 	scanner.Scan()
+
 	idx := 1
 
 	file, err = os.Create("Two/member.tsv")
@@ -386,7 +386,7 @@ func getNamesMap(result chan map[string]person) {
 
 				var line []string
 
-				line = append(line, strconv.Itoa(idx))
+				line = append(line, strconv.Itoa(p.MemberID))
 				line = append(line, p.PrimaryName)
 				line = append(line, p.BirthYear)
 				line = append(line, p.DeathYear)
@@ -405,103 +405,7 @@ func getNamesMap(result chan map[string]person) {
 
 	addMembersToDB()
 
-}
-
-func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
-
-	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/crew.tsv")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	scanner.Scan()
-
-	wFile, err := os.Create("Two/title_writer.csv")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer wFile.Close()
-
-	writerWriter := csv.NewWriter(wFile)
-
-	dFile, err := os.Create("Two/title_director.csv")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer dFile.Close()
-
-	dWriter := csv.NewWriter(dFile)
-	for scanner.Scan() {
-		txt := scanner.Text()
-
-		if txt != "" {
-			i := strings.Index(txt, "\\N")
-
-			for {
-				if i == -1 {
-					break
-				}
-
-				txt = txt[:i] + txt[i+2:]
-				i = strings.Index(txt, "\\N")
-			}
-
-			row := strings.Split(txt, "\t")
-			if len(row) == 3 {
-
-				titleId := titleIds[row[0]] // Get titleID from tconst
-
-				directors := strings.Split(row[1], ",")
-
-				for _, elem := range directors {
-					var lines []string
-
-					p, ok := people[elem]
-
-					// Have to add this part since sometimes they aren't in members
-					if ok {
-						lines = append(lines, strconv.Itoa(p.MemberID))
-						lines = append(lines, strconv.Itoa(titleId))
-
-						err := dWriter.Write(lines)
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-				}
-
-				writers := strings.Split(row[2], ",")
-
-				for _, elem := range writers {
-					var lines []string
-
-					p, ok := people[elem]
-
-					// Have to add this part since sometimes they aren't in members
-					if ok {
-						lines = append(lines, strconv.Itoa(p.MemberID))
-						lines = append(lines, strconv.Itoa(titleId))
-
-						err := writerWriter.Write(lines)
-						if err != nil {
-							log.Fatal(err)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	writerWriter.Flush()
-	dWriter.Flush()
-
-	addWritersToDB()
-	addDirectorsToDB()
-
-	wg.Done()
+	return people
 }
 
 func addWritersToDB() {
@@ -554,6 +458,105 @@ func addDirectorsToDB() {
 	}
 }
 
+func readInCrewTSV(people map[string]person, titleIds map[string]int) {
+
+	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/crew.tsv")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Scan()
+
+	wFile, err := os.Create("Two/title_writer.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer wFile.Close()
+
+	writerWriter := csv.NewWriter(wFile)
+
+	dFile, err := os.Create("Two/title_director.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer dFile.Close()
+
+	dWriter := csv.NewWriter(dFile)
+	for scanner.Scan() {
+		txt := scanner.Text()
+
+		if txt != "" {
+			i := strings.Index(txt, "\\N")
+
+			for {
+				if i == -1 {
+					break
+				}
+
+				txt = txt[:i] + txt[i+2:]
+				i = strings.Index(txt, "\\N")
+			}
+
+			row := strings.Split(txt, "\t")
+			if len(row) == 3 {
+
+				titleId, titleOk := titleIds[row[0]] // Get titleID from tconst
+
+				if titleOk {
+
+					directors := strings.Split(row[1], ",")
+
+					for _, elem := range directors {
+						var lines []string
+
+						p, ok := people[elem]
+
+						// Have to add this part since sometimes they aren't in members
+						if ok {
+							lines = append(lines, strconv.Itoa(p.MemberID))
+							lines = append(lines, strconv.Itoa(titleId))
+
+							err := dWriter.Write(lines)
+							if err != nil {
+								log.Fatal(err)
+							}
+						}
+					}
+
+					writers := strings.Split(row[2], ",")
+
+					for _, elem := range writers {
+						var lines []string
+
+						p, ok := people[elem]
+
+						// Have to add this part since sometimes they aren't in members
+						if ok {
+							lines = append(lines, strconv.Itoa(p.MemberID))
+							lines = append(lines, strconv.Itoa(titleId))
+
+							err := writerWriter.Write(lines)
+							if err != nil {
+								log.Fatal(err)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	writerWriter.Flush()
+	dWriter.Flush()
+
+	addWritersToDB()
+	addDirectorsToDB()
+
+}
+
 func addRolesToDatabase(roleMap map[string]int) {
 
 	roleFile, err := os.Create("Two/roles.tsv")
@@ -571,9 +574,11 @@ func addRolesToDatabase(roleMap map[string]int) {
 		lines = append(lines, strconv.Itoa(roleID))
 		lines = append(lines, role)
 
-		err := roleWriter.Write(lines)
-		if err != nil {
-			log.Fatal(err)
+		if role != "" && len(role) != 0 {
+			err := roleWriter.Write(lines)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 
@@ -604,7 +609,33 @@ func addRolesToDatabase(roleMap map[string]int) {
 
 }
 
-func addActorsAndProducersToDatabase() {
+func addProducersToDatabase() {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Title_Producer FROM '/home/danielmoore/Documents/College/BigData/Two/title_producer.csv' " +
+		"WITH (DELIMITER ',', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func addActorsToDatabase() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
 		log.Fatal(err)
@@ -623,23 +654,11 @@ func addActorsAndProducersToDatabase() {
 		log.Fatal(err)
 	}
 
-	queryString = "COPY Title_Producer FROM '/home/danielmoore/Documents/College/BigData/Two/title_producer.csv' " +
-		"WITH (DELIMITER ',', NULL '');"
-
-	commandTag, err = conn.Exec(context.Background(), queryString)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
-	}
-
 	err = conn.Close(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }
 
 func addActorTitleRoleToDB() {
@@ -668,7 +687,7 @@ func addActorTitleRoleToDB() {
 
 }
 
-func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
+func readInActorsAndProducers(people map[string]person, titleIds map[string]int) {
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/principals.tsv")
 	if err != nil {
@@ -725,64 +744,72 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 			row := strings.Split(txt, "\t")
 			if len(row) == 6 && (row[3] == "producer" || row[3] == "actor") {
 
-				titleId := titleIds[row[0]] // Get titleID from tconst
-				p := people[row[2]]         // Get memberID from nconst
+				titleId, titleOK := titleIds[row[0]] // Get titleID from tconst
+				p, personOK := people[row[2]]        // Get memberID from nconst
 
-				tmp := strings.ReplaceAll(row[5], "[", "")
-				tmp = strings.ReplaceAll(tmp, "]", "")
+				if titleOK && personOK { //Have to add this because sometimes they aren't im members
 
-				roles := strings.Split(tmp, ",")
+					tmp := strings.ReplaceAll(row[5], "[", "")
+					tmp = strings.ReplaceAll(tmp, "]", "")
 
-				//Add roles to map if they don't exist
-				for _, elem := range roles {
+					roles := []string{tmp}
 
-					_, ok := roleMap[elem]
-					if !ok {
-						roleMap[elem] = roleNumber
-						roleNumber += 1
+					//Add roles to map if they don't exist
+					for _, elem := range roles {
+
+						_, ok := roleMap[elem]
+						if !ok {
+							roleMap[elem] = roleNumber
+							roleNumber += 1
+						}
+
+						//At this point we are guaranteed to have role ids
+						//Map lookup is O(1) so doing it twice isn't a big deal
+						if row[3] == "actor" {
+							var actorTitleRoleLines []string
+							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(p.MemberID))
+							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(titleId))
+							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(roleMap[elem]))
+
+							err := actorTitleRoleWriter.Write(actorTitleRoleLines)
+							if err != nil {
+								log.Fatal(err)
+							}
+						}
 					}
 
-					//At this point we are guaranteed to have role ids
-					//Map lookup is O(1) so doing it twice isn't a big deal
 					if row[3] == "actor" {
-						var actorTitleRoleLines []string
-						actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(p.MemberID))
-						actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(titleId))
-						actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(roleMap[elem]))
+						var actorLines []string
+						actorLines = append(actorLines, strconv.Itoa(p.MemberID))
+						actorLines = append(actorLines, strconv.Itoa(titleId))
 
-						err := actorTitleRoleWriter.Write(actorTitleRoleLines)
+						err := actorWriter.Write(actorLines)
 						if err != nil {
 							log.Fatal(err)
 						}
-					}
-				}
+					} else {
+						var producerLines []string
+						producerLines = append(producerLines, strconv.Itoa(p.MemberID))
+						producerLines = append(producerLines, strconv.Itoa(titleId))
 
-				if row[3] == "actor" {
-					var actorLines []string
-					actorLines = append(actorLines, strconv.Itoa(p.MemberID))
-					actorLines = append(actorLines, strconv.Itoa(titleId))
-
-					err := actorWriter.Write(actorLines)
-					if err != nil {
-						log.Fatal(err)
-					}
-				} else {
-					var producerLines []string
-					producerLines = append(producerLines, strconv.Itoa(p.MemberID))
-					producerLines = append(producerLines, strconv.Itoa(titleId))
-
-					err := producerWriter.Write(producerLines)
-					if err != nil {
-						log.Fatal(err)
+						err := producerWriter.Write(producerLines)
+						if err != nil {
+							log.Fatal(err)
+						}
 					}
 				}
 			}
 		}
 	}
 
+	actorWriter.Flush()
+	producerWriter.Flush()
+	actorTitleRoleWriter.Flush()
+
 	//Add role and actors/producer to database
 	addRolesToDatabase(roleMap)
-	addActorsAndProducersToDatabase()
+	addActorsToDatabase()
+	addProducersToDatabase()
 
 	//Add Actor_Title_Role data now that database is prepped
 	addActorTitleRoleToDB()
@@ -792,31 +819,11 @@ func main() {
 
 	start := time.Now()
 
-	titleResult := make(chan map[string]int, 1)
-	peopleResult := make(chan map[string]person, 1)
+	titleIds := populateTitleTable()
+	people := getNamesMap()
 
-	go populateTitleTable(titleResult)
-	go getNamesMap(peopleResult)
-
-	println("Start waiting for titles and people")
-
-	titleIds := <-titleResult
-	close(titleResult)
-
-	println("title result recieved")
-
-	people := <-peopleResult
-	close(peopleResult)
-
-	println("people result recieved")
-
-	wg := new(sync.WaitGroup)
-
-	wg.Add(2)
-	readInCrewTSV(wg, people, titleIds)
-	readInActorsAndProducers(wg, people, titleIds)
-
-	wg.Wait()
+	readInCrewTSV(people, titleIds)
+	readInActorsAndProducers(people, titleIds)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
