@@ -295,9 +295,7 @@ func addGenreToTableLink() {
 
 }
 
-func populateTitleTable(wg *sync.WaitGroup) map[string]int {
-
-	defer wg.Done()
+func populateTitleTable(result chan map[string]int) {
 
 	titles := make(map[string]title)
 
@@ -306,7 +304,7 @@ func populateTitleTable(wg *sync.WaitGroup) map[string]int {
 	addTitlesToDb(titles)
 	addGenreToTableLink()
 
-	return titleIds
+	result <- titleIds
 }
 
 func addMembersToDB() {
@@ -336,9 +334,7 @@ func addMembersToDB() {
 
 }
 
-func getNamesMap(wg *sync.WaitGroup) map[string]person {
-
-	defer wg.Done()
+func getNamesMap(result chan map[string]person) {
 
 	people := make(map[string]person)
 
@@ -409,10 +405,9 @@ func getNamesMap(wg *sync.WaitGroup) map[string]person {
 
 	addMembersToDB()
 
-	return people
 }
 
-func readInCrewTSV(people map[string]person, titleIds map[string]int) {
+func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
 
 	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/crew.tsv")
 	if err != nil {
@@ -498,16 +493,18 @@ func readInCrewTSV(people map[string]person, titleIds map[string]int) {
 				}
 			}
 		}
-
 	}
 
 	writerWriter.Flush()
 	dWriter.Flush()
 
-	addDirectorsAndWritersToDB()
+	addWritersToDB()
+	addDirectorsToDB()
+
+	wg.Done()
 }
 
-func addDirectorsAndWritersToDB() {
+func addWritersToDB() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
 		log.Fatal(err)
@@ -526,7 +523,107 @@ func addDirectorsAndWritersToDB() {
 		log.Fatal(err)
 	}
 
-	queryString = "COPY Title_Director FROM '/home/danielmoore/Documents/College/BigData/Two/title_director.csv' " +
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func addDirectorsToDB() {
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Title_Director FROM '/home/danielmoore/Documents/College/BigData/Two/title_director.csv' " +
+		"WITH (DELIMITER ',', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func addRolesToDatabase(roleMap map[string]int) {
+
+	roleFile, err := os.Create("Two/roles.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer roleFile.Close()
+
+	roleWriter := csv.NewWriter(roleFile)
+	roleWriter.Comma = '\t'
+
+	for role, roleID := range roleMap {
+		var lines []string
+
+		lines = append(lines, strconv.Itoa(roleID))
+		lines = append(lines, role)
+
+		err := roleWriter.Write(lines)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	roleWriter.Flush()
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Role FROM '/home/danielmoore/Documents/College/BigData/Two/roles.tsv' " +
+		"WITH (DELIMITER E'\\t', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func addActorsAndProducersToDatabase() {
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Title_Actor FROM '/home/danielmoore/Documents/College/BigData/Two/title_actor.csv' " +
+		"WITH (DELIMITER ',', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	queryString = "COPY Title_Producer FROM '/home/danielmoore/Documents/College/BigData/Two/title_producer.csv' " +
 		"WITH (DELIMITER ',', NULL '');"
 
 	commandTag, err = conn.Exec(context.Background(), queryString)
@@ -545,20 +642,181 @@ func addDirectorsAndWritersToDB() {
 	}
 }
 
+func addActorTitleRoleToDB() {
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Actor_Title_Role FROM '/home/danielmoore/Documents/College/BigData/Two/actorTitleRole.csv' " +
+		"WITH (DELIMITER ',', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
+
+	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/principals.tsv")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Scan()
+
+	roleMap := make(map[string]int)
+	roleNumber := 1
+
+	actorFile, err := os.Create("Two/title_actor.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer actorFile.Close()
+
+	actorWriter := csv.NewWriter(actorFile)
+
+	producerFile, err := os.Create("Two/title_producer.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer producerFile.Close()
+
+	producerWriter := csv.NewWriter(producerFile)
+
+	actorTitleRoleFile, err := os.Create("Two/actorTitleRole.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer producerFile.Close()
+
+	actorTitleRoleWriter := csv.NewWriter(actorTitleRoleFile)
+
+	for scanner.Scan() {
+		txt := scanner.Text()
+
+		if txt != "" {
+			i := strings.Index(txt, "\\N")
+
+			for {
+				if i == -1 {
+					break
+				}
+
+				txt = txt[:i] + txt[i+2:]
+				i = strings.Index(txt, "\\N")
+			}
+
+			row := strings.Split(txt, "\t")
+			if len(row) == 6 && (row[3] == "producer" || row[3] == "actor") {
+
+				titleId := titleIds[row[0]] // Get titleID from tconst
+				p := people[row[2]]         // Get memberID from nconst
+
+				tmp := strings.ReplaceAll(row[5], "[", "")
+				tmp = strings.ReplaceAll(tmp, "]", "")
+
+				roles := strings.Split(tmp, ",")
+
+				//Add roles to map if they don't exist
+				for _, elem := range roles {
+
+					_, ok := roleMap[elem]
+					if !ok {
+						roleMap[elem] = roleNumber
+						roleNumber += 1
+					}
+
+					//At this point we are guaranteed to have role ids
+					//Map lookup is O(1) so doing it twice isn't a big deal
+					if row[3] == "actor" {
+						var actorTitleRoleLines []string
+						actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(p.MemberID))
+						actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(titleId))
+						actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(roleMap[elem]))
+
+						err := actorTitleRoleWriter.Write(actorTitleRoleLines)
+						if err != nil {
+							log.Fatal(err)
+						}
+					}
+				}
+
+				if row[3] == "actor" {
+					var actorLines []string
+					actorLines = append(actorLines, strconv.Itoa(p.MemberID))
+					actorLines = append(actorLines, strconv.Itoa(titleId))
+
+					err := actorWriter.Write(actorLines)
+					if err != nil {
+						log.Fatal(err)
+					}
+				} else {
+					var producerLines []string
+					producerLines = append(producerLines, strconv.Itoa(p.MemberID))
+					producerLines = append(producerLines, strconv.Itoa(titleId))
+
+					err := producerWriter.Write(producerLines)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+			}
+		}
+	}
+
+	//Add role and actors/producer to database
+	addRolesToDatabase(roleMap)
+	addActorsAndProducersToDatabase()
+
+	//Add Actor_Title_Role data now that database is prepped
+	addActorTitleRoleToDB()
+}
+
 func main() {
 
 	start := time.Now()
 
+	titleResult := make(chan map[string]int, 1)
+	peopleResult := make(chan map[string]person, 1)
+
+	go populateTitleTable(titleResult)
+	go getNamesMap(peopleResult)
+
+	println("Start waiting for titles and people")
+
+	titleIds := <-titleResult
+	close(titleResult)
+
+	println("title result recieved")
+
+	people := <-peopleResult
+	close(peopleResult)
+
+	println("people result recieved")
+
 	wg := new(sync.WaitGroup)
 
-	//These two can be ran independently
 	wg.Add(2)
-	titleIds := populateTitleTable(wg)
-	people := getNamesMap(wg)
+	readInCrewTSV(wg, people, titleIds)
+	readInActorsAndProducers(wg, people, titleIds)
 
 	wg.Wait()
-
-	readInCrewTSV(people, titleIds)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
