@@ -836,9 +836,9 @@ func main() {
 	people := getNamesMap()
 
 	wg := new(sync.WaitGroup)
-	wg.Add(1)
+	wg.Add(2)
 
-	//go readInCrewTSV(wg, people, titleIds)
+	go readInCrewTSV(wg, people, titleIds)
 	go readInActorsAndProducers(wg, people, titleIds)
 
 	wg.Wait()
