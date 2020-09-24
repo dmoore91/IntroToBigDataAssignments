@@ -568,24 +568,28 @@ func addRolesToDatabase(roleMap map[string]int) {
 	}
 	defer roleFile.Close()
 
-	roleWriter := csv.NewWriter(roleFile)
-	roleWriter.Comma = '\t'
+	writer := bufio.NewWriter(roleFile)
 
 	for role, roleID := range roleMap {
-		var lines []string
+		builder := strings.Builder{}
 
-		lines = append(lines, strconv.Itoa(roleID))
-		lines = append(lines, role)
+		builder.WriteString(strconv.Itoa(roleID))
+		builder.WriteString("\t")
+		builder.WriteString("[")
+		builder.WriteString(role)
+		builder.WriteString("]")
+		builder.WriteString("\n")
 
-		if role != "" && len(role) != 0 {
-			err := roleWriter.Write(lines)
-			if err != nil {
-				log.Fatal(err)
-			}
+		_, err := writer.WriteString(builder.String())
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
 
-	roleWriter.Flush()
+	err = writer.Flush()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
@@ -593,7 +597,7 @@ func addRolesToDatabase(roleMap map[string]int) {
 	}
 
 	queryString := "COPY Role(id, role) FROM '/home/danielmoore/Documents/College/BigData/Two/roles.tsv' " +
-		"WITH (DELIMITER E'\\t');"
+		"WITH (DELIMITER E'\t');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
@@ -758,9 +762,17 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 					//Add roles to map if they don't exist
 					for _, elem := range roles {
-						_, ok := roleMap[elem]
+
+						tmp := strings.ReplaceAll(elem, "\"", "")
+						tmp = strings.ReplaceAll(tmp, "]", "")
+						tmp = strings.ReplaceAll(tmp, "[", "")
+
+						//Need to escape backslashes or postgres gets mad
+						tmp = strings.ReplaceAll(tmp, "\\", "\\\\")
+
+						_, ok := roleMap[tmp]
 						if !ok {
-							roleMap[elem] = roleNumber
+							roleMap[tmp] = roleNumber
 							roleNumber += 1
 						}
 
@@ -770,7 +782,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 							var actorTitleRoleLines []string
 							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(p.MemberID))
 							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(titleId))
-							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(roleMap[elem]))
+							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(roleMap[tmp]))
 
 							err := actorTitleRoleWriter.Write(actorTitleRoleLines)
 							if err != nil {
