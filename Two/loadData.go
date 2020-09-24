@@ -592,8 +592,8 @@ func addRolesToDatabase(roleMap map[string]int) {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Role FROM '/home/danielmoore/Documents/College/BigData/Two/roles.tsv' " +
-		"WITH (DELIMITER E'\\t', NULL '');"
+	queryString := "COPY Role(id, role) FROM '/home/danielmoore/Documents/College/BigData/Two/roles.tsv' " +
+		"WITH (DELIMITER E'\\t');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
@@ -754,14 +754,10 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 				if titleOK && personOK { //Have to add this because sometimes they aren't im members
 
-					tmp := strings.ReplaceAll(row[5], "[", "")
-					tmp = strings.ReplaceAll(tmp, "]", "")
-
-					roles := []string{tmp}
+					roles := strings.Split(row[5], "\",\"")
 
 					//Add roles to map if they don't exist
 					for _, elem := range roles {
-
 						_, ok := roleMap[elem]
 						if !ok {
 							roleMap[elem] = roleNumber
@@ -828,10 +824,10 @@ func main() {
 	people := getNamesMap()
 
 	wg := new(sync.WaitGroup)
-	wg.Add(2)
+	wg.Add(1)
 
-	readInCrewTSV(wg, people, titleIds)
-	readInActorsAndProducers(wg, people, titleIds)
+	//go readInCrewTSV(wg, people, titleIds)
+	go readInActorsAndProducers(wg, people, titleIds)
 
 	wg.Wait()
 
