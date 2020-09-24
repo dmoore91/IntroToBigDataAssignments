@@ -90,7 +90,62 @@ func actorsNamedPhiAndDidntActIn2014() {
 	}
 }
 
+func livingActorsWhoHavePlayedJesusChrist() {
+
+	start := time.Now()
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "(SELECT name " +
+		"FROM Member " +
+		"INNER JOIN Actor_Title_Role ON Actor_Title_Role.actor = member.id " +
+		"WHERE deathYear IS NOT NULL AND role = (SELECT id FROM Role WHERE role LIKE '[Jesus]')) " +
+		"UNION " +
+		"(SELECT name " +
+		"FROM Member " +
+		"INNER JOIN Actor_Title_Role ON Actor_Title_Role.actor = member.id " +
+		"WHERE deathYear IS NOT NULL AND role = (SELECT id FROM Role WHERE role LIKE '[Christ]'))"
+
+	rows, err := conn.Query(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//End the timing here since printing has nothing to do
+	//with the speed of the query
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
+
+	defer rows.Close()
+
+	fmt.Println("Names:")
+	for rows.Next() {
+
+		var name string
+
+		err = rows.Scan(&name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(name)
+
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
 func main() {
 	//executeInvalidActorsQuery()
-	actorsNamedPhiAndDidntActIn2014()
+	//actorsNamedPhiAndDidntActIn2014()
+	livingActorsWhoHavePlayedJesusChrist()
 }
