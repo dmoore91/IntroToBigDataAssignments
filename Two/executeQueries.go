@@ -99,15 +99,12 @@ func livingActorsWhoHavePlayedJesusChrist() {
 		log.Fatal(err)
 	}
 
-	queryString := "(SELECT name " +
+	queryString := "SELECT name " +
 		"FROM Member " +
 		"INNER JOIN Actor_Title_Role ON Actor_Title_Role.actor = member.id " +
-		"WHERE deathYear IS NOT NULL AND role = (SELECT id FROM Role WHERE role LIKE '[Jesus]')) " +
-		"UNION " +
-		"(SELECT name " +
-		"FROM Member " +
-		"INNER JOIN Actor_Title_Role ON Actor_Title_Role.actor = member.id " +
-		"WHERE deathYear IS NOT NULL AND role = (SELECT id FROM Role WHERE role LIKE '[Christ]'))"
+		"WHERE deathYear IS NOT NULL " +
+		"AND " +
+		"(role = (SELECT id FROM Role WHERE role LIKE '[Jesus]') OR role = (SELECT id FROM Role WHERE role LIKE '[Christ]'))"
 
 	rows, err := conn.Query(context.Background(), queryString)
 
