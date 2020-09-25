@@ -93,6 +93,15 @@ SELECT name
                 GROUP BY name) tmp);
 	
 /*2.5*/
+/*
+3.5
+
+This query starts with a gather. It then splits into 3 branches which I will explain in order. The first branch performs
+a gather, then a sequential scan on the role table. The second branch does the same thing on another version of the
+role table for the other subquery. The third branch leads to a nested loop which then splits into 2 branches. The one
+branch is a sequential scan on the actor_title_role table. The other is an index scan on the primary key of the member
+table
+*/
 SELECT name
     FROM Member
     INNER JOIN Actor_Title_Role ON Actor_Title_Role.actor = member.id
