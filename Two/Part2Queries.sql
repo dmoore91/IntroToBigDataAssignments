@@ -17,7 +17,7 @@ This execution plan starts with a SETOP and append. I think these two are relate
 branches in 2, which is presumably the two queries we are running. Both branches start off with a subquery scan and gather.
 From here they diverge. The first query does a hash join, then sequential scan for both parts of the ON in the join.
 The second query uses an index scan to join on title and a hash join to join on actor and Member.id. The join on actor
-and member.id is the exact same in both branches
+and member.id is the exact same in both branches.
 */
 (SELECT name
     FROM Member
@@ -31,6 +31,24 @@ EXCEPT
     WHERE deathYear IS NULL AND name LIKE 'Phi%'  AND Title.startYear=2014);
 	
 /*2.3*/
+/*
+3.3
+
+Both queries start with an aggregation on member.name. The first query starts with 2 aggregations, then a gather merge
+then another aggregation. After which we sort by member.name. At this point the plan diverges. One part performs an index
+scan while the other performs the inner joins as a nested loop. From here is splits where one side is an index scan and
+the other is a hash join on title and the genre title. The hash join branches into a sequential scan on title_producer.
+The other branch starts with a hash, which then leads to a hash join. This hash join splits into a sequential scan and
+another hash, which ends in an index scan.
+
+The second query starts with a gather merge, then an aggregation then it sorts on member.name. At this point we start
+performing inner joins via a nested loop. One branch is an index scan on the primary key of member, the other is
+another nested loop. This nested loop then branches into an index scan on the primary key of the title table. The other
+branch from here is a hash join which is used to perform the inner join on genre and producer title. From here we
+branch again. One side of the branch being a sequential scan on the title_producer table. The other branch being a hash,
+then a join on title_genre and genre_id. At this point we once again branch. The one branch is a sequential scan on
+the title_genre table. The other branch is a hash then index scan on the genre key of the genre table
+*/
 SELECT name, COUNT(name)
     FROM Member
     INNER JOIN Title_Producer ON Title_Producer.producer = Member.id
