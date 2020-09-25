@@ -74,6 +74,22 @@ SELECT name, COUNT(name)
                 GROUP BY name) tmp);
 
 /*2.4*/
+/*
+3.4
+
+This query starts with an aggregation on member.name. From here the plan branches into 2 paths. The first is an
+aggregation, then another aggregation over member.name. After this, it performs a gather merge, then another aggregation
+on member.name, then a sort on member.name. From here it goes into a nested loop where the paths branch, one of these
+branches is an index scan on the primary key of the member table. The other branch is a hash join on the id of the title
+table and the title part of the title_producer table. From here it splits into a sequential scan on the title_producer
+table and a hash then sequential scan on the title field of the title table.
+
+The other branch off the original starts with a gather merge, then an aggregation and sort on member.name. From this
+point, we perform the inner join using a nested loop. This splits into an index scan on the primary key of the member
+table. The other side of the loop is a hash join on the title part of title_producer and the id in the title table. At
+this point it splits again into a sequential scan on the title_producer table and a hash then sequential scan on the
+title table.
+*/
 SELECT name
     FROM Member
     INNER JOIN Title_Producer ON Title_Producer.producer = Member.id
