@@ -18,7 +18,9 @@ func executeInvalidActorsQuery() {
 		log.Fatal(err)
 	}
 
-	queryString := "SELECT (SELECT COUNT(*) FROM Title_Actor) - (SELECT COUNT(*) FROM Actor_Title_Role) as total_count;"
+	queryString := "SELECT COUNT(Title_Actor.title) " +
+		"FROM Title_Actor " +
+		"LEFT OUTER JOIN Actor_Title_Role ON Actor_Title_Role.title = Title_Actor.title;"
 
 	var numActors int
 
@@ -269,9 +271,9 @@ func getLongRunningProducers() {
 }
 
 func main() {
-	//executeInvalidActorsQuery()
+	executeInvalidActorsQuery()
 	//actorsNamedPhiAndDidntActIn2014()
 	//livingActorsWhoHavePlayedJesusChrist()
 	//getProducersGill()
-	getLongRunningProducers()
+	//getLongRunningProducers()
 }
