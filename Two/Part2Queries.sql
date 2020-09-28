@@ -125,18 +125,25 @@ SELECT name
     AND (role = (SELECT id FROM Role  WHERE role LIKE '[Jesus]')
         OR  role = (SELECT id FROM Role WHERE role LIKE '[Christ]'));
 
+/*
+Initial Times:
+2.1) It took  2.592266844s to run this query
+2.2) It took  3.097466077s to run this query
+2.3) It took  447.627472ms to run this query
+2.4) It took  2.519199152s to run this query
+2.5) It took  1.171576767s to run this query
 
--- Initial Times:
--- 2.1) It took  2.592266844s to run this query
--- 2.2) It took  3.097466077s to run this query
--- 2.3) It took  447.627472ms to run this query
--- 2.4) It took  2.519199152s to run this query
--- 2.5) It took  1.171576767s to run this query
+Indexed Times
+2.1) It took  2.601135613s to run this query
+2.2) It took  976.975056ms to run this query
+2.3) It took  141.871903ms to run this query
+2.4) It took  2.317672044s to run this query
+2.5) It took  939.043392ms to run this query
 
--- Indexed Times
--- 2.1) It took  2.601135613s to run this query
--- 2.2) It took  976.975056ms to run this query
--- 2.3) It took  141.871903ms to run this query
--- 2.4) It took  2.317672044s to run this query
--- 2.5) It took  939.043392ms to run this query
+I will explain the reasoning for all of my index in one statement because every index had the same reasoning.
+When looking at all of the execution planes, the costliest part was always an equality comparison during a join. It
+being equality is the reason I decided to always go with the b-tree index. I made the index on all the fields that were
+the costliest so I would have the best "bang" for my buck when I was creating indices. Since indices do take up extra
+space, I wanted to be careful to make sure I only used them when most appropriate.
 
+*/
