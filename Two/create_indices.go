@@ -94,7 +94,7 @@ func main() {
 	//Create b-tree index on actor in title_actor
 	indexOnActorInTitleActor()
 
-	//Create hash index on title in actor_title_role
+	//Create b-tree index on title in actor_title_role
 	indexOnTitleInActorTitleRole()
 
 }
