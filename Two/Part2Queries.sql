@@ -132,3 +132,11 @@ SELECT name
 -- 2.3) It took  447.627472ms to run this query
 -- 2.4) It took  2.519199152s to run this query
 -- 2.5) It took  1.171576767s to run this query
+
+-- Indexed Times
+-- 2.1) It took  2.601135613s to run this query
+-- 2.2) It took  976.975056ms to run this query
+-- 2.3) It took  141.871903ms to run this query
+-- 2.4) It took  2.317672044s to run this query
+-- 2.5) It took  939.043392ms to run this query
+
