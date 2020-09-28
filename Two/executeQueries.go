@@ -58,7 +58,7 @@ func actorsNamedPhiAndDidntActIn2014() {
 		"INNER JOIN Title_Actor ON actor = Member.id INNER JOIN Title ON Title_Actor.title = Title.id " +
 		"WHERE deathYear IS NULL AND name LIKE 'Phi%' AND Title.startYear=2014)"
 
-	_, err = conn.Query(context.Background(), queryString)
+	rows, err := conn.Query(context.Background(), queryString)
 
 	if err != nil {
 		log.Fatal(err)
@@ -70,21 +70,21 @@ func actorsNamedPhiAndDidntActIn2014() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
-	//defer rows.Close()
-	//
-	//fmt.Println("Actor:")
-	//for rows.Next() {
-	//
-	//	var name string
-	//
-	//	err = rows.Scan(&name)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//
-	//	fmt.Println(name)
-	//
-	//}
+	defer rows.Close()
+
+	fmt.Println("Actor:")
+	for rows.Next() {
+
+		var name string
+
+		err = rows.Scan(&name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(name)
+
+	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
@@ -108,7 +108,7 @@ func livingActorsWhoHavePlayedJesusChrist() {
 		"AND " +
 		"(role = (SELECT id FROM Role WHERE role LIKE '[Jesus]') OR role = (SELECT id FROM Role WHERE role LIKE '[Christ]'))"
 
-	_, err = conn.Query(context.Background(), queryString)
+	rows, err := conn.Query(context.Background(), queryString)
 
 	if err != nil {
 		log.Fatal(err)
@@ -120,21 +120,21 @@ func livingActorsWhoHavePlayedJesusChrist() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
-	//defer rows.Close()
-	//
-	//fmt.Println("Actors:")
-	//for rows.Next() {
-	//
-	//	var name string
-	//
-	//	err = rows.Scan(&name)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//
-	//	fmt.Println(name)
-	//
-	//}
+	defer rows.Close()
+
+	fmt.Println("Actors:")
+	for rows.Next() {
+
+		var name string
+
+		err = rows.Scan(&name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(name)
+
+	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
@@ -176,7 +176,7 @@ func getProducersGill() {
 		"AND  startYear = 2017" +
 		"GROUP BY name) tmp);"
 
-	_, err = conn.Query(context.Background(), queryString)
+	rows, err := conn.Query(context.Background(), queryString)
 
 	if err != nil {
 		log.Fatal(err)
@@ -188,21 +188,21 @@ func getProducersGill() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
-	//defer rows.Close()
-	//
-	//fmt.Println("Producers:")
-	//for rows.Next() {
-	//
-	//	var name string
-	//
-	//	err = rows.Scan(&name)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//
-	//	fmt.Println(name)
-	//
-	//}
+	defer rows.Close()
+
+	fmt.Println("Producers:")
+	for rows.Next() {
+
+		var name string
+
+		err = rows.Scan(&name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(name)
+
+	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
@@ -235,7 +235,7 @@ func getLongRunningProducers() {
 		"WHERE deathYear IS NOT NULL AND runtimeMinutes > 120 " +
 		"GROUP BY name) tmp);"
 
-	_, err = conn.Query(context.Background(), queryString)
+	rows, err := conn.Query(context.Background(), queryString)
 
 	if err != nil {
 		log.Fatal(err)
@@ -247,21 +247,21 @@ func getLongRunningProducers() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
-	//defer rows.Close()
-	//
-	//fmt.Println("Producers:")
-	//for rows.Next() {
-	//
-	//	var name string
-	//
-	//	err = rows.Scan(&name)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//
-	//	fmt.Println(name)
-	//
-	//}
+	defer rows.Close()
+
+	fmt.Println("Producers:")
+	for rows.Next() {
+
+		var name string
+
+		err = rows.Scan(&name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(name)
+
+	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
@@ -271,9 +271,9 @@ func getLongRunningProducers() {
 }
 
 func main() {
-	executeInvalidActorsQuery()
-	actorsNamedPhiAndDidntActIn2014()
+	//executeInvalidActorsQuery()
+	//actorsNamedPhiAndDidntActIn2014()
+	//getProducersGill()
+	//getLongRunningProducers()
 	livingActorsWhoHavePlayedJesusChrist()
-	getProducersGill()
-	getLongRunningProducers()
 }
