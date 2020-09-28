@@ -124,3 +124,11 @@ SELECT name
     WHERE deathYear IS NOT NULL
     AND (role = (SELECT id FROM Role  WHERE role LIKE '[Jesus]')
         OR  role = (SELECT id FROM Role WHERE role LIKE '[Christ]'));
+
+
+-- Initial Times:
+-- 2.1) It took  2.592266844s to run this query
+-- 2.2) It took  3.097466077s to run this query
+-- 2.3) It took  447.627472ms to run this query
+-- 2.4) It took  2.519199152s to run this query
+-- 2.5) It took  1.171576767s to run this query
