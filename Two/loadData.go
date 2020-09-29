@@ -57,7 +57,7 @@ func (t title) ToTSVString() string {
 //Reads ratings file into graviton db
 func readInRatings(m map[string]title) map[string]title {
 
-	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/ratings.tsv")
+	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/Data/ratings.tsv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -154,7 +154,7 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 
 	genres := make(map[string]int)
 
-	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/title.tsv")
+	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/Data/title.tsv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -248,7 +248,7 @@ func addTitlesToDb(m map[string]title) {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title FROM '/home/danielmoore/Documents/College/BigData/Two/result.tsv' " +
+	queryString := "COPY Title FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/result.tsv' " +
 		"WITH (DELIMITER E'\\t', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -275,7 +275,7 @@ func addGenreToTableLink() {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title_Genre FROM '/home/danielmoore/Documents/College/BigData/Two/genre.csv' " +
+	queryString := "COPY Title_Genre FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/genre.csv' " +
 		"WITH (DELIMITER ',', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -314,7 +314,7 @@ func addMembersToDB() {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Member FROM '/home/danielmoore/Documents/College/BigData/Two/member.tsv' " +
+	queryString := "COPY Member FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/member.tsv' " +
 		"WITH (DELIMITER E'\\t', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -338,7 +338,7 @@ func getNamesMap() map[string]person {
 
 	people := make(map[string]person)
 
-	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/name.tsv")
+	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/Data/name.tsv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -415,7 +415,7 @@ func addWritersToDB() {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title_Writer FROM '/home/danielmoore/Documents/College/BigData/Two/title_writer.csv' " +
+	queryString := "COPY Title_Writer FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_writer.csv' " +
 		"WITH (DELIMITER ',', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -440,7 +440,7 @@ func addDirectorsToDB() {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title_Director FROM '/home/danielmoore/Documents/College/BigData/Two/title_director.csv' " +
+	queryString := "COPY Title_Director FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_director.csv' " +
 		"WITH (DELIMITER ',', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -463,7 +463,7 @@ func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[st
 
 	defer wg.Done()
 
-	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/crew.tsv")
+	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/Data/crew.tsv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -596,7 +596,7 @@ func addRolesToDatabase(roleMap map[string]int) {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Role(id, role) FROM '/home/danielmoore/Documents/College/BigData/Two/roles.tsv' " +
+	queryString := "COPY Role(id, role) FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/roles.tsv' " +
 		"WITH (DELIMITER E'\t');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -623,7 +623,7 @@ func addProducersToDatabase() {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title_Producer FROM '/home/danielmoore/Documents/College/BigData/Two/title_producer.csv' " +
+	queryString := "COPY Title_Producer FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_producer.csv' " +
 		"WITH (DELIMITER ',', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -648,7 +648,7 @@ func addActorsToDatabase() {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Title_Actor FROM '/home/danielmoore/Documents/College/BigData/Two/title_actor.csv' " +
+	queryString := "COPY Title_Actor FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_actor.csv' " +
 		"WITH (DELIMITER ',', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -674,7 +674,7 @@ func addActorTitleRoleToDB() {
 		log.Fatal(err)
 	}
 
-	queryString := "COPY Actor_Title_Role FROM '/home/danielmoore/Documents/College/BigData/Two/actorTitleRole.csv' " +
+	queryString := "COPY Actor_Title_Role FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/actorTitleRole.csv' " +
 		"WITH (DELIMITER ',', NULL '');"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -698,7 +698,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 	defer wg.Done()
 
-	file, err := os.Open("/home/danielmoore/Documents/College/BigData/Two/data/principals.tsv")
+	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/Data/principals.tsv")
 	if err != nil {
 		fmt.Println(err)
 	}
