@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"strings"
@@ -36,9 +37,10 @@ type roles struct {
 }
 
 type titleActorRole struct {
-	TitleID  int
-	MemberID int
-	RoleList roles
+	Tconst         string
+	Nconst         string
+	RoleList       roles
+	RuntimeMinutes int
 }
 
 //Adds to genre map given genres from title
@@ -64,7 +66,7 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int, map[str
 
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Three/Data/title.tsv")
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	defer file.Close()
 
@@ -97,11 +99,17 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int, map[str
 
 				titleIds[row[0]] = idx
 
+				runtimeMinutes := row[7]
+
+				if row[7] == "" {
+					runtimeMinutes = "0"
+				}
+
 				t := title{
 					Id:             id,
 					TitleType:      row[1],
 					StartYear:      row[5],
-					RuntimeMinutes: row[7],
+					RuntimeMinutes: runtimeMinutes,
 					Genres:         strings.Split(row[8], ","),
 				}
 
@@ -121,7 +129,7 @@ func readInRatings(m map[string]title) map[string]title {
 
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Three/Data/ratings.tsv")
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	defer file.Close()
 
@@ -179,7 +187,7 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Three/Data/name.tsv")
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	defer file.Close()
 
@@ -224,11 +232,12 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 	peopleChan <- people
 }
 
-func linkTitleActorAndRoles(people map[string]person, titleIds map[string]int) map[int][]titleActorRole {
+func linkTitleActorAndRoles(titles map[string]title, people map[string]person,
+	titleIds map[string]int) map[int][]titleActorRole {
 
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Three/Data/principals.tsv")
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	defer file.Close()
 
@@ -260,13 +269,18 @@ func linkTitleActorAndRoles(people map[string]person, titleIds map[string]int) m
 			if len(row) == 6 && (row[3] == "actor") {
 
 				titleId, titleOK := titleIds[row[0]] // Get titleID from tconst
-				p, personOK := people[row[2]]        // Get memberID from nconst
+				_, personOK := people[row[2]]        // Get memberID from nconst
 
 				if titleOK && personOK { //Have to add this because sometimes they aren't in members
 
 					rolesList := roles{Roles: []role{}}
 
 					rolesForActor := strings.Split(row[5], "\",\"")
+
+					runtimeMinutes, err := strconv.Atoi(titles[row[0]].RuntimeMinutes)
+					if err != nil {
+						log.Error(err)
+					}
 
 					// Add roles to map if they don't exist
 					// Add role and roleID to actor's list of roles
@@ -295,9 +309,10 @@ func linkTitleActorAndRoles(people map[string]person, titleIds map[string]int) m
 					}
 
 					tar := titleActorRole{
-						TitleID:  titleId,
-						MemberID: p.MemberID,
-						RoleList: rolesList,
+						Tconst:         row[0],
+						Nconst:         row[2],
+						RoleList:       rolesList,
+						RuntimeMinutes: runtimeMinutes,
 					}
 
 					titleActorRoleMap[titleId] = append(titleActorRoleMap[titleId], tar)
@@ -307,6 +322,40 @@ func linkTitleActorAndRoles(people map[string]person, titleIds map[string]int) m
 	}
 
 	return titleActorRoleMap
+}
+
+func filterTitleIds(titleIDs map[string]int, titleActorRoleMap map[int][]titleActorRole) []int {
+
+	var validTitleIDS []int
+
+	var valid bool
+
+	for _, titleID := range titleIDs {
+
+		valid = true
+		tars := titleActorRoleMap[titleID]
+
+		if len(tars) > 0 {
+
+			//Only interested in ones >= 90
+			if tars[0].RuntimeMinutes < 90 {
+				continue
+			}
+
+			for _, tar := range tars {
+				if len(tar.RoleList.Roles) != 1 {
+					valid = false
+					break
+				}
+			}
+
+			if valid {
+				validTitleIDS = append(validTitleIDS, titleID)
+			}
+		}
+	}
+
+	return validTitleIDS
 }
 
 func main() {
@@ -331,7 +380,9 @@ func main() {
 
 	wg.Wait()
 
-	titleActorRoleMap := linkTitleActorAndRoles(people, titleIds)
+	titleActorRoleMap := linkTitleActorAndRoles(titles, people, titleIds)
+
+	validTitleIds := filterTitleIds(titleIds, titleActorRoleMap)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
@@ -343,4 +394,5 @@ func main() {
 	_ = genres
 	_ = people
 	_ = titleActorRoleMap
+	_ = validTitleIds
 }
