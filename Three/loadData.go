@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
@@ -411,6 +413,33 @@ func writeListOfDbEntries(validTitleTconsts []string, titles map[string]title, p
 	w.Flush()
 }
 
+func writeEntriesToDb() {
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_three")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "COPY Movie_Actor_Role(movieID, type, startYear, runtimeMinutes, avgRating, genre_id, genre, " +
+		"member_id, birthYear, role) " +
+		"FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Three/entries.tsv' " +
+		"WITH (DELIMITER E'\t', NULL '');"
+
+	commandTag, err := conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Fatal(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func main() {
 
 	start := time.Now()
@@ -438,6 +467,8 @@ func main() {
 	validTitleIds := filterTitleIds(titleIds, titleActorRoleMap)
 
 	writeListOfDbEntries(validTitleIds, titles, people, genres, titleActorRoleMap)
+
+	writeEntriesToDb()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
