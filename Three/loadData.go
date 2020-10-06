@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -324,9 +325,9 @@ func linkTitleActorAndRoles(titles map[string]title, people map[string]person,
 	return titleActorRoleMap
 }
 
-func filterTitleIds(titleIDs map[string]int, titleActorRoleMap map[int][]titleActorRole) []int {
+func filterTitleIds(titleIDs map[string]int, titleActorRoleMap map[int][]titleActorRole) []string {
 
-	var validTitleIDS []int
+	var validTitleTconsts []string
 
 	var valid bool
 
@@ -350,12 +351,64 @@ func filterTitleIds(titleIDs map[string]int, titleActorRoleMap map[int][]titleAc
 			}
 
 			if valid {
-				validTitleIDS = append(validTitleIDS, titleID)
+				validTitleTconsts = append(validTitleTconsts, tars[0].Tconst)
 			}
 		}
 	}
 
-	return validTitleIDS
+	return validTitleTconsts
+}
+
+func writeListOfDbEntries(validTitleTconsts []string, titles map[string]title, people map[string]person,
+	genres map[string]int, titleActorRoleMap map[int][]titleActorRole) {
+
+	file, err := os.Create("Three/entries.tsv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	w := csv.NewWriter(file)
+	w.Comma = '\t'
+
+	for _, elem := range validTitleTconsts {
+		titleInfo := titles[elem]
+
+		titleID, err := strconv.Atoi(titleInfo.Id)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, genre := range titleInfo.Genres {
+
+			genreID := genres[genre]
+
+			tars := titleActorRoleMap[titleID]
+
+			for _, tar := range tars {
+				personInfo := people[tar.Nconst]
+
+				var lines []string
+
+				lines = append(lines, titleInfo.Id)                      //movieID
+				lines = append(lines, titleInfo.TitleType)               //type
+				lines = append(lines, titleInfo.StartYear)               //startYear
+				lines = append(lines, titleInfo.RuntimeMinutes)          //runtime
+				lines = append(lines, titleInfo.AvgRating)               //avgRating
+				lines = append(lines, strconv.Itoa(genreID))             //genreID
+				lines = append(lines, genre)                             //genre
+				lines = append(lines, strconv.Itoa(personInfo.MemberID)) //memberID
+				lines = append(lines, personInfo.BirthYear)              //birthYear
+				lines = append(lines, tar.RoleList.Roles[0].Role)        //role
+
+				err := w.Write(lines)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
+	}
+	w.Flush()
 }
 
 func main() {
@@ -384,15 +437,9 @@ func main() {
 
 	validTitleIds := filterTitleIds(titleIds, titleActorRoleMap)
 
+	writeListOfDbEntries(validTitleIds, titles, people, genres, titleActorRoleMap)
+
 	t := time.Now()
 	elapsed := t.Sub(start)
 	fmt.Println(elapsed)
-
-	//Just set to nothing to get rid of error
-	_ = titles
-	_ = titleIds
-	_ = genres
-	_ = people
-	_ = titleActorRoleMap
-	_ = validTitleIds
 }
