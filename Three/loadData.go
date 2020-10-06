@@ -26,6 +26,21 @@ type person struct {
 	DeathYear   string
 }
 
+type role struct {
+	RoleID int
+	Role   string
+}
+
+type roles struct {
+	Roles []role
+}
+
+type titleActorRole struct {
+	TitleID  int
+	MemberID int
+	RoleList roles
+}
+
 //Adds to genre map given genres from title
 func addToGenreMap(genres map[string]int, genreList []string, genreNumber int) (map[string]int, int) {
 
@@ -162,7 +177,7 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 
 	people := make(map[string]person)
 
-	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/Data/name.tsv")
+	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Three/Data/name.tsv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -209,6 +224,91 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 	peopleChan <- people
 }
 
+func linkTitleActorAndRoles(people map[string]person, titleIds map[string]int) map[int][]titleActorRole {
+
+	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Three/Data/principals.tsv")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Scan()
+
+	roleMap := make(map[string]int)
+	roleNumber := 1
+
+	titleActorRoleMap := make(map[int][]titleActorRole)
+
+	for scanner.Scan() {
+		txt := scanner.Text()
+
+		if txt != "" {
+			i := strings.Index(txt, "\\N")
+
+			for {
+				if i == -1 {
+					break
+				}
+
+				txt = txt[:i] + txt[i+2:]
+				i = strings.Index(txt, "\\N")
+			}
+
+			row := strings.Split(txt, "\t")
+			if len(row) == 6 && (row[3] == "actor") {
+
+				titleId, titleOK := titleIds[row[0]] // Get titleID from tconst
+				p, personOK := people[row[2]]        // Get memberID from nconst
+
+				if titleOK && personOK { //Have to add this because sometimes they aren't in members
+
+					rolesList := roles{Roles: []role{}}
+
+					rolesForActor := strings.Split(row[5], "\",\"")
+
+					// Add roles to map if they don't exist
+					// Add role and roleID to actor's list of roles
+					for _, elem := range rolesForActor {
+
+						tmp := strings.ReplaceAll(elem, "\"", "")
+						tmp = strings.ReplaceAll(tmp, "]", "")
+						tmp = strings.ReplaceAll(tmp, "[", "")
+
+						//Need to escape backslashes or postgres gets mad
+						tmp = strings.ReplaceAll(tmp, "\\", "\\\\")
+
+						roleStruct := role{
+							RoleID: 0, Role: tmp}
+
+						roleID, ok := roleMap[tmp]
+						if !ok {
+							roleMap[tmp] = roleNumber
+							roleNumber += 1
+							roleStruct.RoleID = roleNumber
+						}
+
+						roleStruct.RoleID = roleID
+
+						rolesList.Roles = append(rolesList.Roles, roleStruct)
+					}
+
+					tar := titleActorRole{
+						TitleID:  titleId,
+						MemberID: p.MemberID,
+						RoleList: rolesList,
+					}
+
+					titleActorRoleMap[titleId] = append(titleActorRoleMap[titleId], tar)
+				}
+			}
+		}
+	}
+
+	return titleActorRoleMap
+}
+
 func main() {
 
 	start := time.Now()
@@ -231,6 +331,8 @@ func main() {
 
 	wg.Wait()
 
+	titleActorRoleMap := linkTitleActorAndRoles(people, titleIds)
+
 	t := time.Now()
 	elapsed := t.Sub(start)
 	fmt.Println(elapsed)
@@ -240,4 +342,5 @@ func main() {
 	_ = titleIds
 	_ = genres
 	_ = people
+	_ = titleActorRoleMap
 }
