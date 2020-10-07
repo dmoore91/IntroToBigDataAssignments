@@ -96,6 +96,18 @@ type genreIdMap struct {
 	Role      map[int]string
 }
 
+type genreMap struct {
+	TitleID   map[sql.NullString]int
+	TitleType map[sql.NullString]sql.NullString
+	StartYear map[sql.NullString]sql.NullInt32
+	AvgRating map[sql.NullString]decimal.NullDecimal
+	Runtime   map[sql.NullString]int
+	GenreId   map[sql.NullString]int
+	MemberId  map[sql.NullString]int
+	BirthYear map[sql.NullString]sql.NullInt32
+	Role      map[sql.NullString]string
+}
+
 func readInData() []movieTitleActor {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_three")
@@ -1106,6 +1118,165 @@ func checkGenreId(wg *sync.WaitGroup, data []movieTitleActor) {
 	}
 }
 
+func checkGenre(wg *sync.WaitGroup, data []movieTitleActor) {
+	defer wg.Done()
+
+	maps := genreMap{
+		TitleID:   make(map[sql.NullString]int),
+		TitleType: make(map[sql.NullString]sql.NullString),
+		StartYear: make(map[sql.NullString]sql.NullInt32),
+		Runtime:   make(map[sql.NullString]int),
+		AvgRating: make(map[sql.NullString]decimal.NullDecimal),
+		GenreId:   make(map[sql.NullString]int),
+		MemberId:  make(map[sql.NullString]int),
+		BirthYear: make(map[sql.NullString]sql.NullInt32),
+		Role:      make(map[sql.NullString]string),
+	}
+
+	// All default to being valid functional dependencies. Change to false once we discover they are not
+	isValid := []bool{true, true, true, true, true, true, true, true, true}
+
+	for _, elem := range data {
+
+		// titleID
+		titleID, ok := maps.TitleID[elem.Genre]
+
+		if !ok {
+			maps.TitleID[elem.Genre] = elem.TitleID
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.TitleID != titleID {
+
+				isValid[0] = false
+			}
+		}
+
+		// type
+		titleType, ok := maps.TitleType[elem.Genre]
+
+		if !ok {
+			maps.TitleType[elem.Genre] = elem.TitleType
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.TitleType.String != titleType.String {
+				isValid[1] = false
+			}
+		}
+
+		// startYear
+		startYear, ok := maps.StartYear[elem.Genre]
+
+		if !ok {
+			maps.StartYear[elem.Genre] = elem.StartYear
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.StartYear != startYear {
+				isValid[2] = false
+			}
+		}
+
+		// runtime
+		runtime, ok := maps.Runtime[elem.Genre]
+
+		if !ok {
+			maps.Runtime[elem.Genre] = elem.Runtime
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.Runtime == runtime {
+				isValid[3] = false
+			}
+		}
+
+		// avgRating
+		avgRating, ok := maps.AvgRating[elem.Genre]
+
+		if !ok {
+			maps.AvgRating[elem.Genre] = elem.AvgRating
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.AvgRating != avgRating {
+				isValid[4] = false
+			}
+		}
+
+		// genre_id
+		genreID, ok := maps.GenreId[elem.Genre]
+
+		if !ok {
+			maps.GenreId[elem.Genre] = elem.GenreId
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.GenreId != genreID {
+				isValid[5] = false
+			}
+		}
+
+		// member_id
+		memberID, ok := maps.MemberId[elem.Genre]
+
+		if !ok {
+			maps.MemberId[elem.Genre] = elem.MemberId
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.MemberId != memberID {
+				isValid[6] = false
+			}
+		}
+
+		// birthYear
+		birthYear, ok := maps.BirthYear[elem.Genre]
+
+		if !ok {
+			maps.BirthYear[elem.Genre] = elem.BirthYear
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.BirthYear.Int32 != birthYear.Int32 {
+				isValid[7] = false
+			}
+		}
+
+		// role
+		role, ok := maps.Role[elem.Genre]
+
+		if !ok {
+			maps.Role[elem.Genre] = elem.Role
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.Role != role {
+				isValid[8] = false
+			}
+		}
+	}
+
+	header := "genre->"
+
+	for idx, valid := range isValid {
+
+		if valid {
+			switch idx {
+			case 0:
+				println(header + "movieID")
+			case 1:
+				println(header + "type")
+			case 2:
+				println(header + "startYear")
+			case 3:
+				println(header + "runtimeMinutes")
+			case 4:
+				println(header + "avgRating")
+			case 5:
+				println(header + "genre_id")
+			case 6:
+				println(header + "member_id")
+			case 7:
+				println(header + "birthYear")
+			case 8:
+				println(header + "role")
+			}
+		}
+	}
+}
+
 func main() {
 	start := time.Now()
 
@@ -1118,7 +1289,7 @@ func main() {
 
 	wg := new(sync.WaitGroup)
 
-	wg.Add(5)
+	wg.Add(7)
 
 	go checkMovieID(wg, data)
 	go checkType(wg, data)
@@ -1126,6 +1297,7 @@ func main() {
 	go checkRuntime(wg, data)
 	go checkAvgRating(wg, data)
 	go checkGenreId(wg, data)
+	go checkGenre(wg, data)
 
 	wg.Wait()
 
