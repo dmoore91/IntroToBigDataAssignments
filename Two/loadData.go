@@ -295,7 +295,9 @@ func addGenreToTableLink() {
 
 }
 
-func populateTitleTable() map[string]int {
+func populateTitleTable(wg *sync.WaitGroup, titleIdsChan chan map[string]int) {
+
+	defer wg.Done()
 
 	titles := make(map[string]title)
 
@@ -304,7 +306,7 @@ func populateTitleTable() map[string]int {
 	addTitlesToDb(titles)
 	addGenreToTableLink()
 
-	return titleIds
+	titleIdsChan <- titleIds
 }
 
 func addMembersToDB() {
@@ -334,7 +336,9 @@ func addMembersToDB() {
 
 }
 
-func getNamesMap() map[string]person {
+func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
+
+	defer wg.Done()
 
 	people := make(map[string]person)
 
@@ -406,7 +410,7 @@ func getNamesMap() map[string]person {
 
 	addMembersToDB()
 
-	return people
+	peopleChan <- people
 }
 
 func addWritersToDB() {
@@ -832,10 +836,21 @@ func main() {
 
 	start := time.Now()
 
-	titleIds := populateTitleTable()
-	people := getNamesMap()
-
 	wg := new(sync.WaitGroup)
+
+	titleIdsChan := make(chan map[string]int)
+	peopleChan := make(chan map[string]person)
+
+	wg.Add(2)
+
+	go populateTitleTable(wg, titleIdsChan)
+	go getNamesMap(wg, peopleChan)
+
+	titleIds := <-titleIdsChan
+	people := <-peopleChan
+
+	wg.Wait()
+
 	wg.Add(2)
 
 	go readInCrewTSV(wg, people, titleIds)
