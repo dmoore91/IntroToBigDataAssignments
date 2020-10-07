@@ -36,6 +36,18 @@ type titleIdMaps struct {
 	Role      map[int]string
 }
 
+type typeMaps struct {
+	TitleID   map[sql.NullString]int
+	StartYear map[sql.NullString]sql.NullInt32
+	Runtime   map[sql.NullString]int
+	AvgRating map[sql.NullString]decimal.NullDecimal
+	GenreId   map[sql.NullString]int
+	Genre     map[sql.NullString]sql.NullString
+	MemberId  map[sql.NullString]int
+	BirthYear map[sql.NullString]sql.NullInt32
+	Role      map[sql.NullString]string
+}
+
 func readInData() []movieTitleActor {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_three")
@@ -239,21 +251,183 @@ func checkMovieID(wg *sync.WaitGroup, data []movieTitleActor) {
 	}
 }
 
+func checkType(wg *sync.WaitGroup, data []movieTitleActor) {
+
+	defer wg.Done()
+
+	maps := typeMaps{
+		TitleID:   make(map[sql.NullString]int),
+		StartYear: make(map[sql.NullString]sql.NullInt32),
+		Runtime:   make(map[sql.NullString]int),
+		AvgRating: make(map[sql.NullString]decimal.NullDecimal),
+		GenreId:   make(map[sql.NullString]int),
+		Genre:     make(map[sql.NullString]sql.NullString),
+		MemberId:  make(map[sql.NullString]int),
+		BirthYear: make(map[sql.NullString]sql.NullInt32),
+		Role:      make(map[sql.NullString]string),
+	}
+
+	// All default to being valid functional dependencies. Change to false once we discover they are not
+	isValid := []bool{true, true, true, true, true, true, true, true, true}
+
+	for _, elem := range data {
+
+		// titleID
+		titleID, ok := maps.TitleID[elem.TitleType]
+
+		if !ok {
+			maps.TitleID[elem.TitleType] = elem.TitleID
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.TitleID != titleID {
+
+				isValid[0] = false
+			}
+		}
+
+		// startYear
+		startYear, ok := maps.StartYear[elem.TitleType]
+
+		if !ok {
+			maps.StartYear[elem.TitleType] = elem.StartYear
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.StartYear.Int32 != startYear.Int32 {
+				isValid[1] = false
+			}
+		}
+
+		// runtimeMinutes
+		runtimeMinutes, ok := maps.Runtime[elem.TitleType]
+
+		if !ok {
+			maps.Runtime[elem.TitleType] = elem.Runtime
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.Runtime != runtimeMinutes {
+				isValid[2] = false
+			}
+		}
+
+		// avgRating
+		avgRating, ok := maps.AvgRating[elem.TitleType]
+
+		if !ok {
+			maps.AvgRating[elem.TitleType] = elem.AvgRating
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if !elem.AvgRating.Decimal.Equal(avgRating.Decimal) {
+				isValid[3] = false
+			}
+		}
+
+		// genre_id
+		genreID, ok := maps.GenreId[elem.TitleType]
+
+		if !ok {
+			maps.GenreId[elem.TitleType] = elem.GenreId
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.GenreId != genreID {
+				isValid[4] = false
+			}
+		}
+
+		// genre
+		genre, ok := maps.Genre[elem.TitleType]
+
+		if !ok {
+			maps.Genre[elem.TitleType] = elem.Genre
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.Genre.String != genre.String {
+				isValid[5] = false
+			}
+		}
+
+		// member_id
+		memberID, ok := maps.MemberId[elem.TitleType]
+
+		if !ok {
+			maps.MemberId[elem.TitleType] = elem.MemberId
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.MemberId != memberID {
+				isValid[6] = false
+			}
+		}
+
+		// birthYear
+		birthYear, ok := maps.BirthYear[elem.TitleType]
+
+		if !ok {
+			maps.BirthYear[elem.TitleType] = elem.BirthYear
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.BirthYear.Int32 != birthYear.Int32 {
+				isValid[7] = false
+			}
+		}
+
+		// role
+		role, ok := maps.Role[elem.TitleType]
+
+		if !ok {
+			maps.Role[elem.TitleType] = elem.Role
+		} else {
+			// Since they differ, this is not a valid functional dependency
+			if elem.Role != role {
+				isValid[8] = false
+			}
+		}
+	}
+
+	header := "type->"
+
+	for idx, valid := range isValid {
+
+		if valid {
+			switch idx {
+			case 0:
+				println(header + "movieID")
+			case 1:
+				println(header + "startYear")
+			case 2:
+				println(header + "runtimeMinutes")
+			case 3:
+				println(header + "avgRating")
+			case 4:
+				println(header + "genre_id")
+			case 5:
+				println(header + "genre")
+			case 6:
+				println(header + "member_id")
+			case 7:
+				println(header + "birthYear")
+			case 8:
+				println(header + "role")
+			}
+		}
+	}
+
+}
+
 func main() {
 	start := time.Now()
 
 	data := readInData()
 
-	// Since we have to brute force, I will spin up 10 go routines. 1 for each column
+	// I will spin up 10 go routines. 1 for each column
 	// I will then iterate through the list of data, keep track of the mappings and if they change, I will
-	// store that that dependency doesn't match in a 10 element boolean array.
+	// store that that dependency doesn't match in a 9 element boolean array.
 	// Once that's done, I will print out text to tell us the dependencies
 
 	wg := new(sync.WaitGroup)
 
-	wg.Add(1)
+	wg.Add(2)
 
 	go checkMovieID(wg, data)
+	go checkType(wg, data)
 
 	wg.Wait()
 
