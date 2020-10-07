@@ -56,7 +56,7 @@ type ratings struct {
 
 func getTitlesFromLinkSlow(conn *pgx.Conn) map[string]int {
 
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\title.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("One/Data/title.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func getTitlesFromLinkSlow(conn *pgx.Conn) map[string]int {
 }
 
 func getEpisodesFromLinkSlow(conn *pgx.Conn, m map[string]int) {
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\episode.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("One/Data/episode.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func getEpisodesFromLinkSlow(conn *pgx.Conn, m map[string]int) {
 }
 
 func getPeopleFromLinkSlow(conn *pgx.Conn) map[string]int {
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\name.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("One/Data/name.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func getPeopleFromLinkSlow(conn *pgx.Conn) map[string]int {
 }
 
 func getPrincipalsFromLinkSlow(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int) {
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\principals.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("One/Data/principals.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -353,7 +353,7 @@ func addWritersSlow(conn *pgx.Conn, people []string, peopleMap map[string]int, c
 }
 
 func getCrewFromLinkSlow(conn *pgx.Conn, titleMap map[string]int, peopleMap map[string]int) {
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\crew.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("One/Data/crew.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -392,7 +392,7 @@ func getCrewFromLinkSlow(conn *pgx.Conn, titleMap map[string]int, peopleMap map[
 }
 
 func getRatingsFromLinkSlow(conn *pgx.Conn, titleMap map[string]int) {
-	data, err := ioutil.ReadFile("C:\\Users\\Dan\\Documents\\College\\Intro to Big Data\\Assignments\\One\\ratings.tsv\\data.tsv")
+	data, err := ioutil.ReadFile("One/Data/ratings.tsv")
 	if err != nil {
 		log.Fatal(err)
 	}
