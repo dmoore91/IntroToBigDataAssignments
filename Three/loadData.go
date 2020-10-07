@@ -296,19 +296,22 @@ func linkTitleActorAndRoles(titles map[string]title, people map[string]person,
 						//Need to escape backslashes or postgres gets mad
 						tmp = strings.ReplaceAll(tmp, "\\", "\\\\")
 
-						roleStruct := role{
-							RoleID: 0, Role: tmp}
+						if tmp != "" {
 
-						roleID, ok := roleMap[tmp]
-						if !ok {
-							roleMap[tmp] = roleNumber
-							roleNumber += 1
-							roleStruct.RoleID = roleNumber
+							roleStruct := role{
+								RoleID: 0, Role: tmp}
+
+							roleID, ok := roleMap[tmp]
+							if !ok {
+								roleMap[tmp] = roleNumber
+								roleNumber += 1
+								roleStruct.RoleID = roleNumber
+							}
+
+							roleStruct.RoleID = roleID
+
+							rolesList.Roles = append(rolesList.Roles, roleStruct)
 						}
-
-						roleStruct.RoleID = roleID
-
-						rolesList.Roles = append(rolesList.Roles, roleStruct)
 					}
 
 					tar := titleActorRole{
