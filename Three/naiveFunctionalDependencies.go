@@ -1,10 +1,69 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"sync"
 	"time"
 )
+
+type genericMapsNaive struct {
+	TitleID   map[string]int
+	TitleType map[string]sql.NullString
+	StartYear map[string]sql.NullInt32
+	Runtime   map[string]int
+	AvgRating map[string]decimal.NullDecimal
+	GenreId   map[string]int
+	Genre     map[string]sql.NullString
+	MemberId  map[string]int
+	BirthYear map[string]sql.NullInt32
+	Role      map[string]string
+}
+
+func verifyInTitleIdMap(bytes []byte, m map[string]int, curr int) bool {
+
+}
+
+func checkMovieIDNaive(wg *sync.WaitGroup, data []movieTitleActor) {
+
+	defer wg.Done()
+
+	maps := titleIdMaps{
+		TitleType: make(map[int]sql.NullString),
+		StartYear: make(map[int]sql.NullInt32),
+		Runtime:   make(map[int]int),
+		AvgRating: make(map[int]decimal.NullDecimal),
+		GenreId:   make(map[int]int),
+		Genre:     make(map[int]sql.NullString),
+		MemberId:  make(map[int]int),
+		BirthYear: make(map[int]sql.NullInt32),
+		Role:      make(map[int]string),
+	}
+
+	// All default to being valid functional dependencies. Change to false once we discover they are not
+	isValid := []bool{true, true, true, true, true, true, true, true, true, true}
+
+	for _, elem := range data {
+
+		valid := verifyInTitleIdMap
+
+	}
+
+	header := ""
+
+	for idx, valid := range isValid {
+
+		if valid {
+			switch idx {
+			case 0:
+				header += "movieID->"
+			}
+		}
+	}
+
+	println(header + "movieID")
+}
 
 func main() {
 	start := time.Now()
