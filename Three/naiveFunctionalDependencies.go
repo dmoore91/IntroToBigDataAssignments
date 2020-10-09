@@ -125,11 +125,12 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 		Role:      make(map[string]string),
 	}
 
-	// All default to being valid functional dependencies. Change to false once we discover they are not
-	isValid := []bool{true, true, true, true, true, true, true, true, true, true}
-
 	// Iterate through each column in db
 	for group := 0; group < 10; group++ {
+
+		// All default to being valid functional dependencies. Change to false once we discover they are not
+		// Reset after each group
+		isValid := []bool{true, true, true, true, true, true, true, true, true, true}
 
 		// Iterate through each row in db
 		for _, elem := range data {
@@ -159,7 +160,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 				// Since they differ, this is not a valid functional dependency
 				if elem.TitleType.String != titleType.String {
 
-					isValid[0] = false
+					isValid[1] = false
 				}
 			}
 
@@ -171,7 +172,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if elem.StartYear.Int32 != startYear.Int32 {
-					isValid[1] = false
+					isValid[2] = false
 				}
 			}
 
@@ -183,7 +184,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if elem.Runtime != runtimeMinutes {
-					isValid[2] = false
+					isValid[3] = false
 				}
 			}
 
@@ -195,7 +196,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if !elem.AvgRating.Decimal.Equal(avgRating.Decimal) {
-					isValid[3] = false
+					isValid[4] = false
 				}
 			}
 
@@ -207,7 +208,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if elem.GenreId != genreID {
-					isValid[4] = false
+					isValid[5] = false
 				}
 			}
 
@@ -219,7 +220,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if elem.Genre.String != genre.String {
-					isValid[5] = false
+					isValid[6] = false
 				}
 			}
 
@@ -231,7 +232,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if elem.MemberId != memberID {
-					isValid[6] = false
+					isValid[7] = false
 				}
 			}
 
@@ -243,7 +244,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if elem.BirthYear.Int32 != birthYear.Int32 {
-					isValid[7] = false
+					isValid[8] = false
 				}
 			}
 
@@ -255,7 +256,59 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			} else {
 				// Since they differ, this is not a valid functional dependency
 				if elem.Role != role {
-					isValid[8] = false
+					isValid[9] = false
+				}
+			}
+		}
+
+		header := ""
+
+		switch group {
+		case 0:
+			header += "movieID->"
+		case 1:
+			header += "type->"
+		case 2:
+			header += "startYear->"
+		case 3:
+			header += "runtimeMinutes->"
+		case 4:
+			header += "avgRating->"
+		case 5:
+			header += "genre_id->"
+		case 6:
+			header += "genre->"
+		case 7:
+			header += "member_id->"
+		case 8:
+			header += "birthYear->"
+		case 9:
+			header += "role->"
+		}
+
+		for idx, valid := range isValid {
+			if valid {
+				switch idx {
+				case 0:
+					println(header + "movieID")
+				case 1:
+					println(header + "type")
+				case 2:
+					println(header + "startYear")
+				case 3:
+					println(header + "runtimeMinutes")
+				case 4:
+					println(header + "avgRating")
+				case 5:
+					println(header + "genre_id")
+				case 6:
+					println(header + "genre")
+				case 7:
+					println(header + "member_id")
+				case 8:
+					println(header + "birthYear")
+				case 9:
+					println(header + "role")
 				}
 			}
 		}
