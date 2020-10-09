@@ -2971,6 +2971,10 @@ func checkNineOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 }
 
 func main() {
+	// This program works by brute force checking all the functional dependencies. While it is parallelized, the
+	// algorithm itself isn't optimized at all in the spirit of the assignment. We check groups of 1-9 on the left
+	// always one on the right. I use a key of the string representation of all the fields appended together. This is
+	// fast, easy and guaranteed to always be unique.
 	start := time.Now()
 
 	// Same as other one
