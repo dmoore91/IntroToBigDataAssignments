@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
 	"database/sql"
 	"fmt"
 	"github.com/jackc/pgx"
@@ -112,19 +111,6 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 
 	defer wg.Done()
 
-	maps := genericMapsNaive{
-		TitleID:   make(map[string]int),
-		TitleType: make(map[string]sql.NullString),
-		StartYear: make(map[string]sql.NullInt32),
-		Runtime:   make(map[string]int),
-		AvgRating: make(map[string]decimal.NullDecimal),
-		GenreId:   make(map[string]int),
-		Genre:     make(map[string]sql.NullString),
-		MemberId:  make(map[string]int),
-		BirthYear: make(map[string]sql.NullInt32),
-		Role:      make(map[string]string),
-	}
-
 	// Iterate through each column in db
 	for group := 0; group < 10; group++ {
 
@@ -132,11 +118,24 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 		// Reset after each group
 		isValid := []bool{true, true, true, true, true, true, true, true, true, true}
 
+		// Need to create new maps for each group too or else we'll get collisions
+		maps := genericMapsNaive{
+			TitleID:   make(map[string]int),
+			TitleType: make(map[string]sql.NullString),
+			StartYear: make(map[string]sql.NullInt32),
+			Runtime:   make(map[string]int),
+			AvgRating: make(map[string]decimal.NullDecimal),
+			GenreId:   make(map[string]int),
+			Genre:     make(map[string]sql.NullString),
+			MemberId:  make(map[string]int),
+			BirthYear: make(map[string]sql.NullInt32),
+			Role:      make(map[string]string),
+		}
+
 		// Iterate through each row in db
 		for _, elem := range data {
 
-			bytes := md5.Sum([]byte(getValueByColumnNum(group, elem)))
-			key := string(bytes[:])
+			key := getValueByColumnNum(group, elem)
 
 			// titleID
 			titleID, ok := maps.TitleID[key]
