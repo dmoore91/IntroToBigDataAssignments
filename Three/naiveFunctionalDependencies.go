@@ -286,7 +286,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 		}
 
 		for idx, valid := range isValid {
-			if valid {
+			if valid && idx != group {
 				switch idx {
 				case 0:
 					println(header + "movieID")
