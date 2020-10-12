@@ -21,3 +21,4 @@ This repo is used to hold all my assignments for my Intro To Big Data course. I 
 	* Implement prune functional dependency search to efficiently find functional dependencies
 		* Runs in about 3 seconds
 	* Implement naive functional dependency search to demonstrate how long it takes to brute force functional dependencies
+		* I didn't let this run all the way through but it'll take about 8-9 days to complete. This is because it's intentionally inefficient to demonstrate why brute finding functional dependencies is a terrible idea
