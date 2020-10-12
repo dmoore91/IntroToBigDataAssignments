@@ -81,7 +81,7 @@ func readInDataNaive() []movieTitleActorNaive {
 	return data
 }
 
-func getValueByColumnNum(loc int, elem movieTitleActorNaive) string {
+func getValueByColumnNumNaive(loc int, elem movieTitleActorNaive) string {
 	switch loc {
 	case 0:
 		return strconv.Itoa(elem.TitleID)
@@ -135,7 +135,7 @@ func checkOneOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 		// Iterate through each row in db
 		for _, elem := range data {
 
-			key := getValueByColumnNum(group, elem)
+			key := getValueByColumnNumNaive(group, elem)
 
 			// titleID
 			titleID, ok := maps.TitleID[key]
@@ -346,8 +346,8 @@ func checkTwoOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 			// Iterate through each row in db
 			for _, elem := range data {
 
-				key := getValueByColumnNum(groupOne, elem)
-				key += getValueByColumnNum(groupTwo, elem)
+				key := getValueByColumnNumNaive(groupOne, elem)
+				key += getValueByColumnNumNaive(groupTwo, elem)
 
 				// titleID
 				titleID, ok := maps.TitleID[key]
@@ -584,9 +584,9 @@ func checkThreeOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 				// Iterate through each row in db
 				for _, elem := range data {
 
-					key := getValueByColumnNum(groupOne, elem)
-					key += getValueByColumnNum(groupTwo, elem)
-					key += getValueByColumnNum(groupThree, elem)
+					key := getValueByColumnNumNaive(groupOne, elem)
+					key += getValueByColumnNumNaive(groupTwo, elem)
+					key += getValueByColumnNumNaive(groupThree, elem)
 
 					// titleID
 					titleID, ok := maps.TitleID[key]
@@ -849,10 +849,10 @@ func checkFourOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 					// Iterate through each row in db
 					for _, elem := range data {
 
-						key := getValueByColumnNum(groupOne, elem)
-						key += getValueByColumnNum(groupTwo, elem)
-						key += getValueByColumnNum(groupThree, elem)
-						key += getValueByColumnNum(groupFour, elem)
+						key := getValueByColumnNumNaive(groupOne, elem)
+						key += getValueByColumnNumNaive(groupTwo, elem)
+						key += getValueByColumnNumNaive(groupThree, elem)
+						key += getValueByColumnNumNaive(groupFour, elem)
 
 						// titleID
 						titleID, ok := maps.TitleID[key]
@@ -1142,11 +1142,11 @@ func checkFiveOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 						// Iterate through each row in db
 						for _, elem := range data {
 
-							key := getValueByColumnNum(groupOne, elem)
-							key += getValueByColumnNum(groupTwo, elem)
-							key += getValueByColumnNum(groupThree, elem)
-							key += getValueByColumnNum(groupFour, elem)
-							key += getValueByColumnNum(groupFive, elem)
+							key := getValueByColumnNumNaive(groupOne, elem)
+							key += getValueByColumnNumNaive(groupTwo, elem)
+							key += getValueByColumnNumNaive(groupThree, elem)
+							key += getValueByColumnNumNaive(groupFour, elem)
+							key += getValueByColumnNumNaive(groupFive, elem)
 
 							// titleID
 							titleID, ok := maps.TitleID[key]
@@ -1462,12 +1462,12 @@ func checkSixOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 							// Iterate through each row in db
 							for _, elem := range data {
 
-								key := getValueByColumnNum(groupOne, elem)
-								key += getValueByColumnNum(groupTwo, elem)
-								key += getValueByColumnNum(groupThree, elem)
-								key += getValueByColumnNum(groupFour, elem)
-								key += getValueByColumnNum(groupFive, elem)
-								key += getValueByColumnNum(groupSix, elem)
+								key := getValueByColumnNumNaive(groupOne, elem)
+								key += getValueByColumnNumNaive(groupTwo, elem)
+								key += getValueByColumnNumNaive(groupThree, elem)
+								key += getValueByColumnNumNaive(groupFour, elem)
+								key += getValueByColumnNumNaive(groupFive, elem)
+								key += getValueByColumnNumNaive(groupSix, elem)
 
 								// titleID
 								titleID, ok := maps.TitleID[key]
@@ -1810,13 +1810,13 @@ func checkSevenOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 								// Iterate through each row in db
 								for _, elem := range data {
 
-									key := getValueByColumnNum(groupOne, elem)
-									key += getValueByColumnNum(groupTwo, elem)
-									key += getValueByColumnNum(groupThree, elem)
-									key += getValueByColumnNum(groupFour, elem)
-									key += getValueByColumnNum(groupFive, elem)
-									key += getValueByColumnNum(groupSix, elem)
-									key += getValueByColumnNum(groupSeven, elem)
+									key := getValueByColumnNumNaive(groupOne, elem)
+									key += getValueByColumnNumNaive(groupTwo, elem)
+									key += getValueByColumnNumNaive(groupThree, elem)
+									key += getValueByColumnNumNaive(groupFour, elem)
+									key += getValueByColumnNumNaive(groupFive, elem)
+									key += getValueByColumnNumNaive(groupSix, elem)
+									key += getValueByColumnNumNaive(groupSeven, elem)
 
 									// titleID
 									titleID, ok := maps.TitleID[key]
@@ -2185,14 +2185,14 @@ func checkEightOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 									// Iterate through each row in db
 									for _, elem := range data {
 
-										key := getValueByColumnNum(groupOne, elem)
-										key += getValueByColumnNum(groupTwo, elem)
-										key += getValueByColumnNum(groupThree, elem)
-										key += getValueByColumnNum(groupFour, elem)
-										key += getValueByColumnNum(groupFive, elem)
-										key += getValueByColumnNum(groupSix, elem)
-										key += getValueByColumnNum(groupSeven, elem)
-										key += getValueByColumnNum(groupEight, elem)
+										key := getValueByColumnNumNaive(groupOne, elem)
+										key += getValueByColumnNumNaive(groupTwo, elem)
+										key += getValueByColumnNumNaive(groupThree, elem)
+										key += getValueByColumnNumNaive(groupFour, elem)
+										key += getValueByColumnNumNaive(groupFive, elem)
+										key += getValueByColumnNumNaive(groupSix, elem)
+										key += getValueByColumnNumNaive(groupSeven, elem)
+										key += getValueByColumnNumNaive(groupEight, elem)
 
 										// titleID
 										titleID, ok := maps.TitleID[key]
@@ -2587,15 +2587,15 @@ func checkNineOnLeft(wg *sync.WaitGroup, data []movieTitleActorNaive) {
 										// Iterate through each row in db
 										for _, elem := range data {
 
-											key := getValueByColumnNum(groupOne, elem)
-											key += getValueByColumnNum(groupTwo, elem)
-											key += getValueByColumnNum(groupThree, elem)
-											key += getValueByColumnNum(groupFour, elem)
-											key += getValueByColumnNum(groupFive, elem)
-											key += getValueByColumnNum(groupSix, elem)
-											key += getValueByColumnNum(groupSeven, elem)
-											key += getValueByColumnNum(groupEight, elem)
-											key += getValueByColumnNum(groupNine, elem)
+											key := getValueByColumnNumNaive(groupOne, elem)
+											key += getValueByColumnNumNaive(groupTwo, elem)
+											key += getValueByColumnNumNaive(groupThree, elem)
+											key += getValueByColumnNumNaive(groupFour, elem)
+											key += getValueByColumnNumNaive(groupFive, elem)
+											key += getValueByColumnNumNaive(groupSix, elem)
+											key += getValueByColumnNumNaive(groupSeven, elem)
+											key += getValueByColumnNumNaive(groupEight, elem)
+											key += getValueByColumnNumNaive(groupNine, elem)
 
 											// titleID
 											titleID, ok := maps.TitleID[key]
