@@ -8,7 +8,6 @@ import (
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -38,6 +37,49 @@ type genericMaps struct {
 	Role      map[string]string
 }
 
+func readInData() []movieTitleActor {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_three")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "SELECT movieID , type, startYear, runtimeMinutes, avgRating, genre_id, genre, member_id, " +
+		"birthYear, role " +
+		"FROM Movie_Actor_Role"
+
+	rows, err := conn.Query(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var data []movieTitleActor
+
+	defer rows.Close()
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var m = movieTitleActor{}
+		err = rows.Scan(&m.TitleID, &m.TitleType, &m.StartYear, &m.Runtime, &m.AvgRating, &m.GenreId, &m.Genre,
+			&m.MemberId, &m.BirthYear, &m.Role)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		data = append(data, m)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return data
+}
+
 func getValueByColumnNum(loc int, elem movieTitleActor) string {
 	switch loc {
 	case 0:
@@ -64,9 +106,9 @@ func getValueByColumnNum(loc int, elem movieTitleActor) string {
 	return ""
 }
 
-func checkGroupsOfOne(wg *sync.WaitGroup, data []movieTitleActor) {
+func checkGroupsOfOne(data []movieTitleActor) [10][10]bool {
 
-	defer wg.Done()
+	var relArr [10][10]bool
 
 	// Iterate through each column in db
 	for group := 0; group < 10; group++ {
@@ -244,6 +286,8 @@ func checkGroupsOfOne(wg *sync.WaitGroup, data []movieTitleActor) {
 
 		for idx, valid := range isValid {
 			if valid && idx != group {
+				relArr[group][idx] = true
+
 				switch idx {
 				case 0:
 					println(header + "movieID")
@@ -270,12 +314,10 @@ func checkGroupsOfOne(wg *sync.WaitGroup, data []movieTitleActor) {
 		}
 	}
 
-	fmt.Println("Check One Done")
+	return relArr
 }
 
-func checkGroupOfTwo(wg *sync.WaitGroup, data []movieTitleActor) {
-
-	defer wg.Done()
+func checkGroupOfTwo(data []movieTitleActor, relArr [10][10]bool) {
 
 	// Iterate through each column in db
 	for groupOne := 0; groupOne < 10; groupOne++ {
@@ -480,7 +522,8 @@ func checkGroupOfTwo(wg *sync.WaitGroup, data []movieTitleActor) {
 				}
 
 				for idx, valid := range isValid {
-					if valid && idx != groupOne && idx != groupTwo {
+					if valid && idx != groupOne && idx != groupTwo &&
+						!(relArr[groupOne][idx] || relArr[groupTwo][idx]) {
 						switch idx {
 						case 0:
 							println(header + "movieID")
@@ -508,51 +551,6 @@ func checkGroupOfTwo(wg *sync.WaitGroup, data []movieTitleActor) {
 			}
 		}
 	}
-
-	fmt.Println("Check Two Done")
-}
-
-func readInData() []movieTitleActor {
-
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_three")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	queryString := "SELECT movieID , type, startYear, runtimeMinutes, avgRating, genre_id, genre, member_id, " +
-		"birthYear, role " +
-		"FROM Movie_Actor_Role"
-
-	rows, err := conn.Query(context.Background(), queryString)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var data []movieTitleActor
-
-	defer rows.Close()
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var m = movieTitleActor{}
-		err = rows.Scan(&m.TitleID, &m.TitleType, &m.StartYear, &m.Runtime, &m.AvgRating, &m.GenreId, &m.Genre,
-			&m.MemberId, &m.BirthYear, &m.Role)
-
-		if err != nil {
-			log.Error(err)
-		}
-
-		data = append(data, m)
-	}
-
-	err = conn.Close(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return data
 }
 
 func main() {
@@ -560,14 +558,11 @@ func main() {
 
 	data := readInData()
 
-	wg := new(sync.WaitGroup)
-
-	wg.Add(2)
-
-	go checkGroupsOfOne(wg, data)
-	go checkGroupOfTwo(wg, data)
-
-	wg.Wait()
+	// Can't use go routines because I actually need checkGroupsOfOne to finish before checkGroupsOfTwo
+	// I'm going to keep a map of what functional dependencies I got from one and then not print them if that's what
+	// I get from two
+	relArr := checkGroupsOfOne(data)
+	checkGroupOfTwo(data, relArr)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
