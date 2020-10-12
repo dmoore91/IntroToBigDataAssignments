@@ -81,6 +81,7 @@ func readInDataNaive() []movieTitleActorNaive {
 	return data
 }
 
+// run with go build naiveFunctionalDependencies.go
 func getValueByColumnNumNaive(loc int, elem movieTitleActorNaive) string {
 	switch loc {
 	case 0:

@@ -443,6 +443,7 @@ func writeEntriesToDb() {
 	}
 }
 
+// run with go build loadData.go
 func main() {
 
 	start := time.Now()

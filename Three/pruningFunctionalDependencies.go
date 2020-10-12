@@ -553,6 +553,7 @@ func checkGroupOfTwo(data []movieTitleActor, relArr [10][10]bool) {
 	}
 }
 
+// run with go build pruningFunctionalDependencies.go
 func main() {
 	start := time.Now()
 
