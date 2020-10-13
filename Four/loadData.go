@@ -2,7 +2,11 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
 	"strconv"
 	"strings"
@@ -165,6 +169,8 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 
 	people := make(map[string]person)
 
+	var peopleList []interface{}
+
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/name.tsv")
 	if err != nil {
 		fmt.Println(err)
@@ -202,12 +208,23 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 					DeathYear:   row[3],
 				}
 
+				// Add current person to bulk insert instructions
+				peopleList = append(peopleList, p)
+
 				people[row[0]] = p
 
 			}
 		}
 
 		idx += 1
+	}
+
+	client := ConnectToDatabase()
+
+	_, err = client.Database("assignment_four").Collection("Members").InsertMany(context.Background(), peopleList)
+
+	if err != nil {
+		log.Error(err)
 	}
 
 	peopleChan <- people
@@ -334,31 +351,54 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 	}
 }
 
+func ConnectToDatabase() *mongo.Client {
+	// Set client options
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+
+	// Connect to MongoDB
+	client, err := mongo.Connect(context.Background(), clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Check the connection
+	err = client.Ping(context.TODO(), nil)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return client
+}
+
 func main() {
 
 	start := time.Now()
 
 	wg := new(sync.WaitGroup)
 
-	titleIdsChan := make(chan map[string]int)
+	//titleIdsChan := make(chan map[string]int)
 	peopleChan := make(chan map[string]person)
 
-	wg.Add(2)
+	wg.Add(1)
 
-	go populateTitleTable(wg, titleIdsChan)
+	//go populateTitleTable(wg, titleIdsChan)
 	go getNamesMap(wg, peopleChan)
 
-	titleIds := <-titleIdsChan
+	//titleIds := <-titleIdsChan
 	people := <-peopleChan
 
 	wg.Wait()
 
-	wg.Add(2)
+	//_ = titleIds
+	_ = people
 
-	go readInCrewTSV(wg, people, titleIds)
-	go readInActorsAndProducers(wg, people, titleIds)
-
-	wg.Wait()
+	//wg.Add(2)
+	//
+	//go readInCrewTSV(wg, people, titleIds)
+	//go readInActorsAndProducers(wg, people, titleIds)
+	//
+	//wg.Wait()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
