@@ -169,7 +169,7 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 
 	people := make(map[string]person)
 
-	var peopleList []interface{}
+	client := ConnectToDatabase()
 
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/name.tsv")
 	if err != nil {
@@ -208,8 +208,11 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 					DeathYear:   row[3],
 				}
 
-				// Add current person to bulk insert instructions
-				peopleList = append(peopleList, p)
+				_, err = client.Database("assignment_four").Collection("Members").InsertOne(context.Background(), p)
+
+				if err != nil {
+					log.Error(err)
+				}
 
 				people[row[0]] = p
 
@@ -217,14 +220,6 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 		}
 
 		idx += 1
-	}
-
-	client := ConnectToDatabase()
-
-	_, err = client.Database("assignment_four").Collection("Members").InsertMany(context.Background(), peopleList)
-
-	if err != nil {
-		log.Error(err)
 	}
 
 	peopleChan <- people
