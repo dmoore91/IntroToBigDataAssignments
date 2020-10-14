@@ -271,9 +271,9 @@ func getLongRunningProducers() {
 }
 
 func main() {
-	//executeInvalidActorsQuery()
-	//actorsNamedPhiAndDidntActIn2014()
-	//getProducersGill()
-	//getLongRunningProducers()
+	executeInvalidActorsQuery()
+	actorsNamedPhiAndDidntActIn2014()
+	getProducersGill()
+	getLongRunningProducers()
 	livingActorsWhoHavePlayedJesusChrist()
 }
