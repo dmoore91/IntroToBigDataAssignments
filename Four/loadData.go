@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -14,44 +15,36 @@ import (
 	"time"
 )
 
+type actor struct {
+	ActorId int      `json:"actor"`
+	Roles   []string `json:"roles"`
+}
+
+type actorList struct {
+	Actors []actor
+}
+
 type title struct {
-	Id             string
-	TitleType      string
-	OriginalTitle  string
-	StartYear      string
-	EndYear        string
-	RuntimeMinutes string
-	AvgRating      string
-	NumVotes       string
+	Id             int             `json:"_id"`
+	TitleType      string          `json:"type"`
+	OriginalTitle  string          `json:"title"`
+	StartYear      int             `json:"startYear"`
+	EndYear        int             `json:"endYear"`
+	RuntimeMinutes int             `json:"runtime"`
+	AvgRating      decimal.Decimal `json:"avgRating"`
+	NumVotes       int             `json:"numVotes"`
+	Genres         []string        `json:"genres"`
+	Actors         actorList       `json:"actors"`
+	Directors      []int           `json:"directors"`
+	Writers        []int           `json:"writers"`
+	Producers      []int           `json:"producer"`
 }
 
 type person struct {
-	MemberID    int
-	PrimaryName string
-	BirthYear   string
-	DeathYear   string
-}
-
-func (t title) ToTSVString() string {
-	builder := strings.Builder{}
-
-	builder.WriteString(t.Id)
-	builder.WriteString("\t")
-	builder.WriteString(t.TitleType)
-	builder.WriteString("\t")
-	builder.WriteString(t.OriginalTitle)
-	builder.WriteString("\t")
-	builder.WriteString(t.StartYear)
-	builder.WriteString("\t")
-	builder.WriteString(t.EndYear)
-	builder.WriteString("\t")
-	builder.WriteString(t.RuntimeMinutes)
-	builder.WriteString("\t")
-	builder.WriteString(t.AvgRating)
-	builder.WriteString("\t")
-	builder.WriteString(t.NumVotes)
-
-	return builder.String()
+	MemberID    int    `json:"_id"`
+	PrimaryName string `json:"name"`
+	BirthYear   string `json:"birthYear"`
+	DeathYear   string `json:"deathYear"`
 }
 
 //Reads ratings file into graviton db
@@ -84,8 +77,18 @@ func readInRatings(m map[string]title) map[string]title {
 			if len(row) == 3 {
 
 				t := m[row[0]]
-				t.AvgRating = row[1]
-				t.NumVotes = row[2]
+
+				tmp, err := decimal.NewFromString(row[1])
+
+				if err == nil {
+					t.AvgRating = tmp
+				}
+
+				intTmp, err := strconv.Atoi(row[2])
+
+				if err == nil {
+					t.NumVotes = intTmp
+				}
 
 				m[row[0]] = t
 			}
@@ -94,9 +97,7 @@ func readInRatings(m map[string]title) map[string]title {
 	return m
 }
 
-func readInTitles(m map[string]title) (map[string]title, map[string]int) {
-
-	titleIds := make(map[string]int)
+func readInTitles(m map[string]title) map[string]title {
 
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/title.tsv")
 	if err != nil {
@@ -128,17 +129,29 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 			row := strings.Split(txt, "\t")
 			if len(row) == 9 {
 
-				id := strconv.Itoa(idx)
-
-				titleIds[row[0]] = idx
-
 				t := title{
-					Id:             id,
-					TitleType:      row[1],
-					OriginalTitle:  row[3],
-					StartYear:      row[5],
-					EndYear:        row[6],
-					RuntimeMinutes: row[7],
+					Id:            idx,
+					TitleType:     row[1],
+					OriginalTitle: row[3],
+					Genres:        strings.Split(row[8], ","),
+				}
+
+				tmp, err := strconv.Atoi(row[5])
+
+				if err == nil {
+					t.StartYear = tmp
+				}
+
+				tmp, err = strconv.Atoi(row[6])
+
+				if err == nil {
+					t.EndYear = tmp
+				}
+
+				tmp, err = strconv.Atoi(row[7])
+
+				if err == nil {
+					t.RuntimeMinutes = tmp
 				}
 
 				m[row[0]] = t
@@ -148,19 +161,19 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 		}
 	}
 
-	return m, titleIds
+	return m
 }
 
-func populateTitleTable(wg *sync.WaitGroup, titleIdsChan chan map[string]int) {
+func populateTitleTable(wg *sync.WaitGroup, titleChan chan map[string]title) {
 
 	defer wg.Done()
 
 	titles := make(map[string]title)
 
-	titles, titleIds := readInTitles(titles)
+	titles = readInTitles(titles)
 	titles = readInRatings(titles)
 
-	titleIdsChan <- titleIds
+	titleChan <- titles
 }
 
 func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
@@ -215,17 +228,14 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 				}
 
 				people[row[0]] = p
-
 			}
 		}
-
 		idx += 1
 	}
-
 	peopleChan <- people
 }
 
-func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
+func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titles map[string]title) {
 
 	defer wg.Done()
 
@@ -257,24 +267,34 @@ func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[st
 			row := strings.Split(txt, "\t")
 			if len(row) == 3 {
 
-				titleId, titleOk := titleIds[row[0]] // Get titleID from tconst
+				title, titleOk := titles[row[0]] // Get titleID from tconst
 
 				if titleOk {
 
 					directors := strings.Split(row[1], ",")
 					writers := strings.Split(row[2], ",")
 
-					_ = titleId
-					_ = directors
-					_ = writers
+					var directorsArr []int
 
+					for _, elem := range directors {
+						directorsArr = append(directorsArr, people[elem].MemberID)
+					}
+
+					var writersArr []int
+
+					for _, elem := range writers {
+						writersArr = append(writersArr, people[elem].MemberID)
+					}
+
+					title.Directors = directorsArr
+					title.Writers = writersArr
 				}
 			}
 		}
 	}
 }
 
-func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titleIds map[string]int) {
+func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titles map[string]title) {
 
 	defer wg.Done()
 
@@ -287,9 +307,6 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 	scanner := bufio.NewScanner(file)
 
 	scanner.Scan()
-
-	roleMap := make(map[string]int)
-	roleNumber := 1
 
 	for scanner.Scan() {
 		txt := scanner.Text()
@@ -309,37 +326,21 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 			row := strings.Split(txt, "\t")
 			if len(row) == 6 && (row[3] == "producer" || row[3] == "actor") {
 
-				titleId, titleOK := titleIds[row[0]] // Get titleID from tconst
-				p, personOK := people[row[2]]        // Get memberID from nconst
+				title, titleOK := titles[row[0]] // Get titleID from tconst
+				p, personOK := people[row[2]]    // Get memberID from nconst
 
-				_ = p
-				_ = titleId
+				if titleOK && personOK {
 
-				if titleOK && personOK { //Have to add this because sometimes they aren't im members
-
-					roles := strings.Split(row[5], "\",\"")
-
-					//Add roles to map if they don't exist
-					for _, elem := range roles {
-
-						tmp := strings.ReplaceAll(elem, "\"", "")
-						tmp = strings.ReplaceAll(tmp, "]", "")
-						tmp = strings.ReplaceAll(tmp, "[", "")
-
-						//Need to escape backslashes or postgres gets mad
-						tmp = strings.ReplaceAll(tmp, "\\", "\\\\")
-
-						_, ok := roleMap[tmp]
-						if !ok {
-							roleMap[tmp] = roleNumber
-							roleNumber += 1
+					if row[3] == "producer" {
+						title.Producers = append(title.Producers, p.MemberID)
+					} else if row[3] == "actor" {
+						a := actor{
+							ActorId: p.MemberID,
+							Roles:   strings.Split(row[5], ","),
 						}
 
-						//At this point we are guaranteed to have role ids
-						//Map lookup is O(1) so doing it twice isn't a big deal
-
+						title.Actors.Actors = append(title.Actors.Actors, a)
 					}
-
 				}
 			}
 		}
@@ -372,28 +373,35 @@ func main() {
 
 	wg := new(sync.WaitGroup)
 
-	//titleIdsChan := make(chan map[string]int)
+	titlesChan := make(chan map[string]title)
 	peopleChan := make(chan map[string]person)
 
-	wg.Add(1)
+	wg.Add(2)
 
-	//go populateTitleTable(wg, titleIdsChan)
+	go populateTitleTable(wg, titlesChan)
 	go getNamesMap(wg, peopleChan)
 
-	//titleIds := <-titleIdsChan
+	titles := <-titlesChan
 	people := <-peopleChan
 
 	wg.Wait()
 
-	//_ = titleIds
-	_ = people
+	wg.Add(2)
 
-	//wg.Add(2)
-	//
-	//go readInCrewTSV(wg, people, titleIds)
-	//go readInActorsAndProducers(wg, people, titleIds)
-	//
-	//wg.Wait()
+	go readInCrewTSV(wg, people, titles)
+	go readInActorsAndProducers(wg, people, titles)
+
+	wg.Wait()
+
+	client := ConnectToDatabase()
+
+	for _, elem := range titles {
+		_, err := client.Database("assignment_four").Collection("Movies").InsertOne(context.Background(), elem)
+
+		if err != nil {
+			log.Error(err)
+		}
+	}
 
 	t := time.Now()
 	elapsed := t.Sub(start)
