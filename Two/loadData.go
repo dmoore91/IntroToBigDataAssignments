@@ -17,6 +17,7 @@ import (
 type title struct {
 	Id             string
 	TitleType      string
+	Title          string
 	OriginalTitle  string
 	StartYear      string
 	EndYear        string
@@ -38,6 +39,8 @@ func (t title) ToTSVString() string {
 	builder.WriteString(t.Id)
 	builder.WriteString("\t")
 	builder.WriteString(t.TitleType)
+	builder.WriteString("\t")
+	builder.WriteString(t.Title)
 	builder.WriteString("\t")
 	builder.WriteString(t.OriginalTitle)
 	builder.WriteString("\t")
@@ -199,6 +202,7 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 				t := title{
 					Id:             id,
 					TitleType:      row[1],
+					Title:          row[2],
 					OriginalTitle:  row[3],
 					StartYear:      row[5],
 					EndYear:        row[6],

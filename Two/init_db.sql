@@ -3,6 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS Title(
     id INTEGER PRIMARY KEY ,
     type text ,
+    title text ,
     originalTitle text ,
     startYear INTEGER  ,
     endYear INTEGER ,
