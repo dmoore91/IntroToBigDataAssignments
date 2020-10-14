@@ -13,35 +13,37 @@ import (
 	"time"
 )
 
-type actorStruct struct {
-	Actor int
-	Roles []string
+type actor struct {
+	ActorId int      `bson:"actor" json:"actor"`
+	Roles   []string `bson:"roles" json:"roles"`
 }
 
 type actorList struct {
-	Actors []actorStruct
+	Actors []actor
 }
 
 type title struct {
-	_Id       int
-	Type      string
-	Title     string
-	StartYear int
-	EndYear   int
-	Runtime   int
-	AvgRating decimal.Decimal
-	NumVotes  int
-	Genres    []string
-	Actors    actorList
-	Directors []int
-	Writers   []int
-	Producers []int
+	Id             int             `bson:"_id" json:"_id"`
+	TitleType      string          `bson:"type" json:"type"`
+	Title          string          `bson:"title" json:"title"`
+	OriginalTitle  string          `bson:"originalTitle" json:"originalTitle"`
+	StartYear      int             `bson:"startYear" json:"startYear"`
+	EndYear        int             `bson:"endYear" json:"actor"`
+	RuntimeMinutes int             `bson:"runtime" json:"runtime"`
+	AvgRating      decimal.Decimal `bson:"avgRating" json:"avgRating"`
+	NumVotes       int             `bson:"numVotes" json:"numVotes"`
+	Genres         []string        `bson:"genres" json:"genres"`
+	Actors         actorList       `bson:"actors" json:"actors"`
+	Directors      []int           `bson:"directors" json:"directors"`
+	Writers        []int           `bson:"writers" json:"writers"`
+	Producers      []int           `bson:"producers" json:"producers"`
 }
 
 type dbTitle struct {
 	Id             sql.NullInt32       `json:"_id"`
 	TitleType      sql.NullString      `json:"type"`
-	OriginalTitle  sql.NullString      `json:"title"`
+	Title          sql.NullString      `json:"title"`
+	OriginalTitle  sql.NullString      `json:"originalTitle"`
 	StartYear      sql.NullInt32       `json:"startYear"`
 	EndYear        sql.NullInt32       `json:"endYear"`
 	RuntimeMinutes sql.NullInt32       `json:"runtime"`
@@ -50,10 +52,10 @@ type dbTitle struct {
 }
 
 type person struct {
-	_Id       int    `json:"_id"`
-	Name      string `json:"name"`
-	BirthYear int    `json:"birthYear"`
-	DeathYear int    `json:"deathYear"`
+	MemberID    int    `bson:"_id" json:"_id"`
+	PrimaryName string `bson:"name" json:"name"`
+	BirthYear   int    `bson:"birthYear" json:"birthYear"`
+	DeathYear   int    `bson:"deathYear" json:"deathYear"`
 }
 
 type dbPerson struct {
@@ -314,9 +316,9 @@ func getActorsForTitle() map[int]actorList {
 			log.Fatal(err)
 		}
 
-		a := actorStruct{
-			Actor: actorID,
-			Roles: rolesMap[titleID][actorID],
+		a := actor{
+			ActorId: actorID,
+			Roles:   rolesMap[titleID][actorID],
 		}
 
 		l := titleActorMap[titleID].Actors
@@ -346,7 +348,7 @@ func readTitleTable() []title {
 
 	defer conn.Close(context.Background())
 
-	queryString := "SELECT id, type, originalTitle, startYear, endYear, runtimeminutes, avgrating, numvotes " +
+	queryString := "SELECT id, type, title, originalTitle, startYear, endYear, runtimeminutes, avgrating, numvotes " +
 		"FROM Title "
 
 	rows, err := conn.Query(context.Background(), queryString)
@@ -361,7 +363,7 @@ func readTitleTable() []title {
 
 		var db dbTitle
 
-		err = rows.Scan(&db.Id, &db.TitleType, &db.OriginalTitle, &db.StartYear, &db.EndYear, &db.RuntimeMinutes,
+		err = rows.Scan(&db.Id, &db.TitleType, &db.TitleType, &db.OriginalTitle, &db.StartYear, &db.EndYear, &db.RuntimeMinutes,
 			&db.AvgRating, &db.NumVotes)
 		if err != nil {
 			log.Fatal(err)
@@ -370,15 +372,19 @@ func readTitleTable() []title {
 		var t title
 
 		if db.Id.Valid {
-			t._Id = int(db.Id.Int32)
+			t.Id = int(db.Id.Int32)
 		}
 
 		if db.TitleType.Valid {
-			t.Type = db.TitleType.String
+			t.TitleType = db.TitleType.String
+		}
+
+		if db.Title.Valid {
+			t.Title = db.Title.String
 		}
 
 		if db.OriginalTitle.Valid {
-			t.Title = db.OriginalTitle.String
+			t.OriginalTitle = db.OriginalTitle.String
 		}
 
 		if db.StartYear.Valid {
@@ -390,7 +396,7 @@ func readTitleTable() []title {
 		}
 
 		if db.RuntimeMinutes.Valid {
-			t.Runtime = int(db.RuntimeMinutes.Int32)
+			t.RuntimeMinutes = int(db.RuntimeMinutes.Int32)
 		}
 
 		if db.AvgRating.Valid {
@@ -432,11 +438,11 @@ func addMovies(wg *sync.WaitGroup) {
 	client := connectToMongo()
 
 	for _, title := range titles {
-		title.Genres = genreMap[title._Id]
-		title.Writers = writerMap[title._Id]
-		title.Producers = producerMap[title._Id]
-		title.Actors = titleActorMap[title._Id]
-		title.Directors = directorMap[title._Id]
+		title.Genres = genreMap[title.Id]
+		title.Writers = writerMap[title.Id]
+		title.Producers = producerMap[title.Id]
+		title.Actors = titleActorMap[title.Id]
+		title.Directors = directorMap[title.Id]
 
 		client.Database("assignment_four").Collection("Movies").InsertOne(context.Background(), title)
 	}
@@ -476,11 +482,11 @@ func getNamesMap(wg *sync.WaitGroup) {
 		var p person
 
 		if db.MemberID.Valid {
-			p._Id = int(db.MemberID.Int32)
+			p.MemberID = int(db.MemberID.Int32)
 		}
 
 		if db.PrimaryName.Valid {
-			p.Name = db.PrimaryName.String
+			p.PrimaryName = db.PrimaryName.String
 		}
 
 		if db.BirthYear.Valid {
