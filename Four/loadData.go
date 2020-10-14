@@ -13,29 +13,29 @@ import (
 	"time"
 )
 
-type actor struct {
-	ActorId int      `json:"actor"`
-	Roles   []string `json:"roles"`
+type actorStruct struct {
+	Actor int
+	Roles []string
 }
 
 type actorList struct {
-	Actors []actor
+	Actors []actorStruct
 }
 
 type title struct {
-	Id             int             `json:"_id"`
-	TitleType      string          `json:"type"`
-	OriginalTitle  string          `json:"title"`
-	StartYear      int             `json:"startYear"`
-	EndYear        int             `json:"endYear"`
-	RuntimeMinutes int             `json:"runtime"`
-	AvgRating      decimal.Decimal `json:"avgRating"`
-	NumVotes       int             `json:"numVotes"`
-	Genres         []string        `json:"genres"`
-	Actors         actorList       `json:"actors"`
-	Directors      []int           `json:"directors"`
-	Writers        []int           `json:"writers"`
-	Producers      []int           `json:"producer"`
+	_Id       int
+	Type      string
+	Title     string
+	StartYear int
+	EndYear   int
+	Runtime   int
+	AvgRating decimal.Decimal
+	NumVotes  int
+	Genres    []string
+	Actors    actorList
+	Directors []int
+	Writers   []int
+	Producers []int
 }
 
 type dbTitle struct {
@@ -50,10 +50,10 @@ type dbTitle struct {
 }
 
 type person struct {
-	MemberID    int    `json:"_id"`
-	PrimaryName string `json:"name"`
-	BirthYear   int    `json:"birthYear"`
-	DeathYear   int    `json:"deathYear"`
+	_Id       int    `json:"_id"`
+	Name      string `json:"name"`
+	BirthYear int    `json:"birthYear"`
+	DeathYear int    `json:"deathYear"`
 }
 
 type dbPerson struct {
@@ -314,9 +314,9 @@ func getActorsForTitle() map[int]actorList {
 			log.Fatal(err)
 		}
 
-		a := actor{
-			ActorId: actorID,
-			Roles:   rolesMap[titleID][actorID],
+		a := actorStruct{
+			Actor: actorID,
+			Roles: rolesMap[titleID][actorID],
 		}
 
 		l := titleActorMap[titleID].Actors
@@ -370,15 +370,15 @@ func readTitleTable() []title {
 		var t title
 
 		if db.Id.Valid {
-			t.Id = int(db.Id.Int32)
+			t._Id = int(db.Id.Int32)
 		}
 
 		if db.TitleType.Valid {
-			t.TitleType = db.TitleType.String
+			t.Type = db.TitleType.String
 		}
 
 		if db.OriginalTitle.Valid {
-			t.OriginalTitle = db.OriginalTitle.String
+			t.Title = db.OriginalTitle.String
 		}
 
 		if db.StartYear.Valid {
@@ -390,7 +390,7 @@ func readTitleTable() []title {
 		}
 
 		if db.RuntimeMinutes.Valid {
-			t.RuntimeMinutes = int(db.RuntimeMinutes.Int32)
+			t.Runtime = int(db.RuntimeMinutes.Int32)
 		}
 
 		if db.AvgRating.Valid {
@@ -429,14 +429,14 @@ func addMovies(wg *sync.WaitGroup) {
 	titleActorMap := getActorsForTitle()
 	fmt.Println("Got Actors")
 
-	client := ConnectToMongo()
+	client := connectToMongo()
 
 	for _, title := range titles {
-		title.Genres = genreMap[title.Id]
-		title.Writers = writerMap[title.Id]
-		title.Producers = producerMap[title.Id]
-		title.Actors = titleActorMap[title.Id]
-		title.Directors = directorMap[title.Id]
+		title.Genres = genreMap[title._Id]
+		title.Writers = writerMap[title._Id]
+		title.Producers = producerMap[title._Id]
+		title.Actors = titleActorMap[title._Id]
+		title.Directors = directorMap[title._Id]
 
 		client.Database("assignment_four").Collection("Movies").InsertOne(context.Background(), title)
 	}
@@ -446,7 +446,7 @@ func getNamesMap(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	client := ConnectToMongo()
+	client := connectToMongo()
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
@@ -476,11 +476,11 @@ func getNamesMap(wg *sync.WaitGroup) {
 		var p person
 
 		if db.MemberID.Valid {
-			p.MemberID = int(db.MemberID.Int32)
+			p._Id = int(db.MemberID.Int32)
 		}
 
 		if db.PrimaryName.Valid {
-			p.PrimaryName = db.PrimaryName.String
+			p.Name = db.PrimaryName.String
 		}
 
 		if db.BirthYear.Valid {
@@ -506,7 +506,7 @@ func getNamesMap(wg *sync.WaitGroup) {
 
 }
 
-func ConnectToMongo() *mongo.Client {
+func connectToMongo() *mongo.Client {
 	// Set client options
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 
