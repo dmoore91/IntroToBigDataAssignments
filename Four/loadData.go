@@ -1,16 +1,15 @@
 package main
 
 import (
-	"bufio"
 	"context"
+	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -40,314 +39,371 @@ type title struct {
 	Producers      []int           `json:"producer"`
 }
 
+type dbTitle struct {
+	Id             sql.NullInt32       `json:"_id"`
+	TitleType      sql.NullString      `json:"type"`
+	OriginalTitle  sql.NullString      `json:"title"`
+	StartYear      sql.NullInt32       `json:"startYear"`
+	EndYear        sql.NullInt32       `json:"endYear"`
+	RuntimeMinutes sql.NullInt32       `json:"runtime"`
+	AvgRating      decimal.NullDecimal `json:"avgRating"`
+	NumVotes       sql.NullInt32       `json:"numVotes"`
+}
+
 type person struct {
 	MemberID    int    `json:"_id"`
 	PrimaryName string `json:"name"`
-	BirthYear   string `json:"birthYear"`
-	DeathYear   string `json:"deathYear"`
+	BirthYear   int    `json:"birthYear"`
+	DeathYear   int    `json:"deathYear"`
 }
 
-//Reads ratings file into graviton db
-func readInRatings(m map[string]title) map[string]title {
+type dbPerson struct {
+	MemberID    sql.NullInt32  `json:"_id"`
+	PrimaryName sql.NullString `json:"name"`
+	BirthYear   sql.NullString `json:"birthYear"`
+	DeathYear   sql.NullString `json:"deathYear"`
+}
 
-	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/ratings.tsv")
+func getGenresForTitle(titleId int, conn *pgx.Conn) []string {
+
+	queryString := "SELECT Genre.genre " +
+		"FROM Title_Genre " +
+		"INNER JOIN Genre ON Title_Genre.genre = genre.id " +
+		"WHERE Title_Genre.title=$1;"
+
+	rows, err := conn.Query(context.Background(), queryString, titleId)
+
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	defer rows.Close()
 
-	for scanner.Scan() {
-		txt := scanner.Text()
+	var genres []string
 
-		i := strings.Index(txt, "\\N")
+	for rows.Next() {
 
-		for {
-			if i == -1 {
-				break
-			}
+		var genre string
 
-			txt = txt[:i] + txt[i+2:]
-			i = strings.Index(txt, "\\N")
+		err = rows.Scan(&genre)
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		if !strings.Contains(txt, "averageRating") {
-			row := strings.Split(txt, "\t")
-			if len(row) == 3 {
-
-				t := m[row[0]]
-
-				tmp, err := decimal.NewFromString(row[1])
-
-				if err == nil {
-					t.AvgRating = tmp
-				}
-
-				intTmp, err := strconv.Atoi(row[2])
-
-				if err == nil {
-					t.NumVotes = intTmp
-				}
-
-				m[row[0]] = t
-			}
-		}
+		genres = append(genres, genre)
 	}
-	return m
+
+	return genres
 }
 
-func readInTitles(m map[string]title) map[string]title {
+func getDirectorsForTitle(titleId int, conn *pgx.Conn) []int {
 
-	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/title.tsv")
+	queryString := "SELECT director " +
+		"FROM Title_Director " +
+		"WHERE title=$1;"
+
+	rows, err := conn.Query(context.Background(), queryString, titleId)
+
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	defer rows.Close()
 
-	scanner.Scan()
+	var directors []int
 
-	idx := 1
+	for rows.Next() {
 
-	for scanner.Scan() {
-		txt := scanner.Text()
+		var director int
 
-		if !strings.Contains(txt, "startyear") && txt != "" {
-			i := strings.Index(txt, "\\N")
-
-			for {
-				if i == -1 {
-					break
-				}
-
-				txt = txt[:i] + txt[i+2:]
-				i = strings.Index(txt, "\\N")
-			}
-
-			row := strings.Split(txt, "\t")
-			if len(row) == 9 {
-
-				t := title{
-					Id:            idx,
-					TitleType:     row[1],
-					OriginalTitle: row[3],
-					Genres:        strings.Split(row[8], ","),
-				}
-
-				tmp, err := strconv.Atoi(row[5])
-
-				if err == nil {
-					t.StartYear = tmp
-				}
-
-				tmp, err = strconv.Atoi(row[6])
-
-				if err == nil {
-					t.EndYear = tmp
-				}
-
-				tmp, err = strconv.Atoi(row[7])
-
-				if err == nil {
-					t.RuntimeMinutes = tmp
-				}
-
-				m[row[0]] = t
-
-				idx += 1
-			}
+		err = rows.Scan(&director)
+		if err != nil {
+			log.Fatal(err)
 		}
+
+		directors = append(directors, director)
 	}
 
-	return m
+	return directors
 }
 
-func populateTitleTable(wg *sync.WaitGroup, titleChan chan map[string]title) {
+func getWritersForTitle(titleId int, conn *pgx.Conn) []int {
+
+	queryString := "SELECT writer " +
+		"FROM Title_Writer " +
+		"WHERE title=$1;"
+
+	rows, err := conn.Query(context.Background(), queryString, titleId)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+
+	var writers []int
+
+	for rows.Next() {
+
+		var writer int
+
+		err = rows.Scan(&writer)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		writers = append(writers, writer)
+	}
+
+	return writers
+}
+
+func getProducersForTitle(titleId int, conn *pgx.Conn) []int {
+
+	queryString := "SELECT producer " +
+		"FROM Title_Producer " +
+		"WHERE title=$1;"
+
+	rows, err := conn.Query(context.Background(), queryString, titleId)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+
+	var producers []int
+
+	for rows.Next() {
+
+		var producer int
+
+		err = rows.Scan(&producer)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		producers = append(producers, producer)
+	}
+
+	return producers
+}
+
+func getRolesForActorForTitle(titleId int, actorID int, conn *pgx.Conn) actor {
+
+	queryString := "SELECT Role.role " +
+		"FROM Actor_Title_Role " +
+		"INNER JOIN Role on Role.id = Actor_Title_Role.role " +
+		"WHERE title=$1 AND actor=$2"
+
+	rows, err := conn.Query(context.Background(), queryString, titleId, actorID)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+
+	var roles []string
+
+	for rows.Next() {
+
+		var role string
+
+		err = rows.Scan(&role)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		roles = append(roles, role)
+	}
+
+	return actor{
+		ActorId: actorID,
+		Roles:   roles,
+	}
+}
+
+func getActorsForTitle(titleId int, conn *pgx.Conn) actorList {
+
+	queryString := "SELECT actor " +
+		"FROM Title_Actor " +
+		"WHERE title=$1;"
+
+	rows, err := conn.Query(context.Background(), queryString, titleId)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+
+	var a actorList
+
+	for rows.Next() {
+
+		var actorID int
+
+		err = rows.Scan(&actorID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		a.Actors = append(a.Actors, getRolesForActorForTitle(titleId, actorID, conn))
+	}
+
+	return a
+}
+
+func populateTitleTable(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	titles := make(map[string]title)
+	client := ConnectToMongo()
 
-	titles = readInTitles(titles)
-	titles = readInRatings(titles)
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	titleChan <- titles
+	queryString := "SELECT id, type, originalTitle, startYear, endYear, runtimeminutes, avgrating, numvotes " +
+		"FROM Title "
+
+	rows, err := conn.Query(context.Background(), queryString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+
+		var db dbTitle
+
+		err = rows.Scan(&db.Id, &db.TitleType, &db.OriginalTitle, &db.StartYear, &db.EndYear, &db.RuntimeMinutes,
+			&db.AvgRating, &db.NumVotes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var t title
+
+		if db.Id.Valid {
+			t.Id = int(db.Id.Int32)
+		}
+
+		if db.TitleType.Valid {
+			t.TitleType = db.TitleType.String
+		}
+
+		if db.OriginalTitle.Valid {
+			t.OriginalTitle = db.OriginalTitle.String
+		}
+
+		if db.StartYear.Valid {
+			t.StartYear = int(db.StartYear.Int32)
+		}
+
+		if db.EndYear.Valid {
+			t.EndYear = int(db.EndYear.Int32)
+		}
+
+		if db.RuntimeMinutes.Valid {
+			t.RuntimeMinutes = int(db.RuntimeMinutes.Int32)
+		}
+
+		if db.AvgRating.Valid {
+			t.AvgRating = db.AvgRating.Decimal
+		}
+
+		if db.NumVotes.Valid {
+			t.NumVotes = int(db.NumVotes.Int32)
+		}
+
+		t.Genres = getGenresForTitle(t.Id, conn)
+		t.Directors = getDirectorsForTitle(t.Id, conn)
+		t.Writers = getWritersForTitle(t.Id, conn)
+		t.Producers = getProducersForTitle(t.Id, conn)
+		t.Actors = getActorsForTitle(t.Id, conn)
+
+		_, err = client.Database("assignment_four").Collection("Movies").InsertOne(context.Background(), t)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
+func getNamesMap(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	people := make(map[string]person)
+	client := ConnectToMongo()
 
-	client := ConnectToDatabase()
-
-	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/name.tsv")
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	queryString := "SELECT id, name, birthYear, deathYear " +
+		"FROM Member "
 
-	scanner.Scan()
+	rows, err := conn.Query(context.Background(), queryString)
 
-	idx := 1
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	for scanner.Scan() {
-		txt := scanner.Text()
+	defer rows.Close()
 
-		if txt != "" {
-			i := strings.Index(txt, "\\N")
+	for rows.Next() {
 
-			for {
-				if i == -1 {
-					break
-				}
+		var db dbPerson
 
-				txt = txt[:i] + txt[i+2:]
-				i = strings.Index(txt, "\\N")
-			}
+		err = rows.Scan(&db.MemberID, &db.PrimaryName, db.BirthYear, db.DeathYear)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-			row := strings.Split(txt, "\t")
-			if len(row) == 6 {
+		var p person
 
-				p := person{
-					MemberID:    idx,
-					PrimaryName: row[1],
-					BirthYear:   row[2],
-					DeathYear:   row[3],
-				}
+		if db.MemberID.Valid {
+			p.MemberID = int(db.MemberID.Int32)
+		}
 
-				_, err = client.Database("assignment_four").Collection("Members").InsertOne(context.Background(), p)
+		if db.PrimaryName.Valid {
+			p.PrimaryName = db.PrimaryName.String
+		}
 
-				if err != nil {
-					log.Error(err)
-				}
-
-				people[row[0]] = p
+		if db.BirthYear.Valid {
+			p.BirthYear, err = strconv.Atoi(db.BirthYear.String)
+			if err != nil {
+				log.Fatal(err)
 			}
 		}
-		idx += 1
-	}
-	peopleChan <- people
-}
 
-func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titles map[string]title) {
-
-	defer wg.Done()
-
-	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/crew.tsv")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	scanner.Scan()
-
-	for scanner.Scan() {
-		txt := scanner.Text()
-
-		if txt != "" {
-			i := strings.Index(txt, "\\N")
-
-			for {
-				if i == -1 {
-					break
-				}
-
-				txt = txt[:i] + txt[i+2:]
-				i = strings.Index(txt, "\\N")
-			}
-
-			row := strings.Split(txt, "\t")
-			if len(row) == 3 {
-
-				title, titleOk := titles[row[0]] // Get titleID from tconst
-
-				if titleOk {
-
-					directors := strings.Split(row[1], ",")
-					writers := strings.Split(row[2], ",")
-
-					var directorsArr []int
-
-					for _, elem := range directors {
-						directorsArr = append(directorsArr, people[elem].MemberID)
-					}
-
-					var writersArr []int
-
-					for _, elem := range writers {
-						writersArr = append(writersArr, people[elem].MemberID)
-					}
-
-					title.Directors = directorsArr
-					title.Writers = writersArr
-				}
+		if db.DeathYear.Valid {
+			p.DeathYear, err = strconv.Atoi(db.DeathYear.String)
+			if err != nil {
+				log.Fatal(err)
 			}
 		}
+
+		client.Database("assignment_four").Collection("Members").InsertOne(context.Background(), p)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
-func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titles map[string]title) {
-
-	defer wg.Done()
-
-	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Four/Data/principals.tsv")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	scanner.Scan()
-
-	for scanner.Scan() {
-		txt := scanner.Text()
-
-		if txt != "" {
-			i := strings.Index(txt, "\\N")
-
-			for {
-				if i == -1 {
-					break
-				}
-
-				txt = txt[:i] + txt[i+2:]
-				i = strings.Index(txt, "\\N")
-			}
-
-			row := strings.Split(txt, "\t")
-			if len(row) == 6 && (row[3] == "producer" || row[3] == "actor") {
-
-				title, titleOK := titles[row[0]] // Get titleID from tconst
-				p, personOK := people[row[2]]    // Get memberID from nconst
-
-				if titleOK && personOK {
-
-					if row[3] == "producer" {
-						title.Producers = append(title.Producers, p.MemberID)
-					} else if row[3] == "actor" {
-						a := actor{
-							ActorId: p.MemberID,
-							Roles:   strings.Split(row[5], ","),
-						}
-
-						title.Actors.Actors = append(title.Actors.Actors, a)
-					}
-				}
-			}
-		}
-	}
-}
-
-func ConnectToDatabase() *mongo.Client {
+func ConnectToMongo() *mongo.Client {
 	// Set client options
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 
@@ -373,35 +429,12 @@ func main() {
 
 	wg := new(sync.WaitGroup)
 
-	titlesChan := make(chan map[string]title)
-	peopleChan := make(chan map[string]person)
-
 	wg.Add(2)
 
-	go populateTitleTable(wg, titlesChan)
-	go getNamesMap(wg, peopleChan)
-
-	titles := <-titlesChan
-	people := <-peopleChan
+	go populateTitleTable(wg)
+	go getNamesMap(wg)
 
 	wg.Wait()
-
-	wg.Add(2)
-
-	go readInCrewTSV(wg, people, titles)
-	go readInActorsAndProducers(wg, people, titles)
-
-	wg.Wait()
-
-	client := ConnectToDatabase()
-
-	for _, elem := range titles {
-		_, err := client.Database("assignment_four").Collection("Movies").InsertOne(context.Background(), elem)
-
-		if err != nil {
-			log.Error(err)
-		}
-	}
 
 	t := time.Now()
 	elapsed := t.Sub(start)
