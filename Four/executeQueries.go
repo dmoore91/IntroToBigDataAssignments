@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
 func connectToMongoQuery() *mongo.Client {
@@ -32,6 +33,8 @@ func connectToMongoQuery() *mongo.Client {
 func actorsNamedPhiAndDidntActIn2014() {
 
 	client := connectToMongoQuery()
+
+	start := time.Now()
 
 	unwindActorsStage := bson.D{{"$unwind", "$actors.actors"}}
 	joinWithMembersStage := bson.D{{"$lookup", bson.D{{"from", "Members"},
@@ -63,10 +66,16 @@ func actorsNamedPhiAndDidntActIn2014() {
 	if err != nil {
 		log.Error(err)
 	}
+
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
 }
 
 func avgRuntimeWrittenByLivingBhardwaj() {
 	client := connectToMongoQuery()
+
+	start := time.Now()
 
 	unwindActorsStage := bson.D{{"$unwind", "$writers"}}
 	joinWithMembersStage := bson.D{{"$lookup", bson.D{{"from", "Members"},
@@ -92,6 +101,10 @@ func avgRuntimeWrittenByLivingBhardwaj() {
 	if err != nil {
 		log.Error(err)
 	}
+
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
 }
 
 func main() {
