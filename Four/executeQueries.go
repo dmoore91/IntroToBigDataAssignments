@@ -73,9 +73,11 @@ func avgRuntimeWrittenByLivingBhardwaj() {
 		{"localField", "writers"}, {"foreignField", "_id"}, {"as", "writer"}}}}
 	getBhardwajStage := bson.D{{"$match", bson.D{{"writer.name",
 		bson.D{{"$regex", "Bhardwaj"}}}}}}
+	//$project: { quizAvg: { $avg: "$quizzes"}
+	avgStage := bson.D{{"$group", bson.D{{"_id", nil}, {"avg", bson.D{{"$avg", "$runtime"}}}}}}
 
 	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
-		mongo.Pipeline{unwindActorsStage, joinWithMembersStage, getBhardwajStage})
+		mongo.Pipeline{unwindActorsStage, joinWithMembersStage, getBhardwajStage, avgStage})
 
 	if err != nil {
 		log.Error(err)
