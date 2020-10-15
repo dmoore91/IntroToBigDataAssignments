@@ -84,6 +84,16 @@ func actorsNamedPhiAndDidntActIn2014() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
+	count := 0
+	max := 1
+
+	for showInfoCursor.Next(context.Background()) {
+		if count < max {
+			fmt.Println(showInfoCursor.Current)
+		}
+		count += 1
+	}
+
 	err = showInfoCursor.Close(context.Background())
 
 	if err != nil {
@@ -115,8 +125,14 @@ func avgRuntimeWrittenByLivingBhardwaj() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
+	count := 0
+	max := 1
+
 	for showInfoCursor.Next(context.Background()) {
-		fmt.Println(showInfoCursor.Current)
+		if count < max {
+			fmt.Println(showInfoCursor.Current)
+		}
+		count += 1
 	}
 
 	err = showInfoCursor.Close(context.Background())
@@ -156,8 +172,14 @@ func getSciFiMovies() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
+	count := 0
+	max := 1
+
 	for showInfoCursor.Next(context.Background()) {
-		fmt.Println(showInfoCursor.Current)
+		if count < max {
+			fmt.Println(showInfoCursor.Current)
+		}
+		count += 1
 	}
 
 	err = showInfoCursor.Close(context.Background())
@@ -197,8 +219,14 @@ func productiveProducersNamedGil() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
+	count := 0
+	max := 1
+
 	for showInfoCursor.Next(context.Background()) {
-		fmt.Println(showInfoCursor.Current)
+		if count < max {
+			fmt.Println(showInfoCursor.Current)
+		}
+		count += 1
 	}
 
 	err = showInfoCursor.Close(context.Background())
@@ -237,8 +265,15 @@ func producersWithGreatestNumberOfLongRunMovies() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
+	count := 0
+	max := 1
+
 	for showInfoCursor.Next(context.Background()) {
-		fmt.Println(showInfoCursor.Current)
+
+		if count < max {
+			fmt.Println(showInfoCursor.Current)
+		}
+		count += 1
 	}
 
 	err = showInfoCursor.Close(context.Background())
@@ -250,8 +285,8 @@ func producersWithGreatestNumberOfLongRunMovies() {
 
 func main() {
 	actorsNamedPhiAndDidntActIn2014()
-	//avgRuntimeWrittenByLivingBhardwaj()
-	//getSciFiMovies()
-	//productiveProducersNamedGil()
-	//producersWithGreatestNumberOfLongRunMovies()
+	avgRuntimeWrittenByLivingBhardwaj()
+	getSciFiMovies()
+	productiveProducersNamedGil()
+	producersWithGreatestNumberOfLongRunMovies()
 }
