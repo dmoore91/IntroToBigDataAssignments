@@ -117,7 +117,7 @@ func getDirectorsForTitle() map[int][]int {
 		log.Fatal(err)
 	}
 
-	queryString := "SELECT director " +
+	queryString := "SELECT title, director " +
 		"FROM Title_Director "
 
 	rows, err := conn.Query(context.Background(), queryString)
@@ -133,7 +133,7 @@ func getDirectorsForTitle() map[int][]int {
 		var titleID int
 		var director int
 
-		err = rows.Scan(&director)
+		err = rows.Scan(&titleID, &director)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -444,7 +444,10 @@ func addMovies(wg *sync.WaitGroup) {
 		title.Actors = titleActorMap[title.Id]
 		title.Directors = directorMap[title.Id]
 
-		client.Database("assignment_four").Collection("Movies").InsertOne(context.Background(), title)
+		_, err := client.Database("assignment_four").Collection("Movies").InsertOne(context.Background(), title)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
