@@ -50,6 +50,10 @@ func actorsNamedPhiAndDidntActIn2014() {
 		log.Error(err)
 	}
 
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
+
 	count := 0
 	max := 1
 
@@ -66,12 +70,9 @@ func actorsNamedPhiAndDidntActIn2014() {
 	if err != nil {
 		log.Error(err)
 	}
-
-	t := time.Now()
-	elapsed := t.Sub(start)
-	fmt.Println("It took  " + elapsed.String() + " to run this query")
 }
 
+//Works
 func avgRuntimeWrittenByLivingBhardwaj() {
 	client := connectToMongoQuery()
 
@@ -82,7 +83,6 @@ func avgRuntimeWrittenByLivingBhardwaj() {
 		{"localField", "writers"}, {"foreignField", "_id"}, {"as", "writer"}}}}
 	getBhardwajStage := bson.D{{"$match", bson.D{{"writer.name",
 		bson.D{{"$regex", "Bhardwaj"}}}}}}
-	//$project: { quizAvg: { $avg: "$quizzes"}
 	avgStage := bson.D{{"$group", bson.D{{"_id", nil}, {"avg", bson.D{{"$avg", "$runtime"}}}}}}
 
 	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
@@ -91,6 +91,10 @@ func avgRuntimeWrittenByLivingBhardwaj() {
 	if err != nil {
 		log.Error(err)
 	}
+
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
 	for showInfoCursor.Next(context.Background()) {
 		fmt.Println(showInfoCursor.Current)
@@ -101,12 +105,9 @@ func avgRuntimeWrittenByLivingBhardwaj() {
 	if err != nil {
 		log.Error(err)
 	}
-
-	t := time.Now()
-	elapsed := t.Sub(start)
-	fmt.Println("It took  " + elapsed.String() + " to run this query")
 }
 
+//Works
 func getSciFiMovies() {
 
 	client := connectToMongoQuery()
@@ -132,6 +133,10 @@ func getSciFiMovies() {
 		log.Error(err)
 	}
 
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
+
 	for showInfoCursor.Next(context.Background()) {
 		fmt.Println(showInfoCursor.Current)
 	}
@@ -141,10 +146,6 @@ func getSciFiMovies() {
 	if err != nil {
 		log.Error(err)
 	}
-
-	t := time.Now()
-	elapsed := t.Sub(start)
-	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
 }
 
@@ -167,6 +168,10 @@ func productiveProducersNamedGil() {
 		log.Error(err)
 	}
 
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
+
 	for showInfoCursor.Next(context.Background()) {
 		fmt.Println(showInfoCursor.Current)
 	}
@@ -177,15 +182,57 @@ func productiveProducersNamedGil() {
 		log.Error(err)
 	}
 
+}
+
+func producersWithGreatestNumberOfLongRunMovies() {
+	client := connectToMongoQuery()
+
+	start := time.Now()
+
+	unwindProducersStage := bson.D{{"$unwind", "$producers"}}
+	joinWithMembersStageProducer := bson.D{{"$lookup", bson.D{{"from", "Members"},
+		{"localField", "producers"}, {"foreignField", "_id"}, {"as", "producer"}}}}
+	getLongRunningMovieStage := bson.D{{"$match", bson.D{{"runtime",
+		bson.D{{"$gt", 120}}}}}}
+	addGroupAndCountStage := bson.D{{"$group", bson.D{{"_id", "$producer.name"},
+		{"count", bson.D{{"$sum", 1}}}}}}
+	sortByCountDescending := bson.D{{"$sort", bson.D{{"count", -1}}}}
+	getFirstElemStage := bson.D{{"$limit", 1}}
+
+	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{unwindProducersStage, joinWithMembersStageProducer, getLongRunningMovieStage,
+			addGroupAndCountStage, sortByCountDescending, getFirstElemStage})
+
+	if err != nil {
+		log.Error(err)
+	}
+
 	t := time.Now()
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
+	count := 0
+	max := 10
+
+	for showInfoCursor.Next(context.Background()) {
+		if count < max {
+			fmt.Println(showInfoCursor.Current)
+		}
+
+		count += 1
+	}
+
+	err = showInfoCursor.Close(context.Background())
+
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func main() {
 	//actorsNamedPhiAndDidntActIn2014()
 	//avgRuntimeWrittenByLivingBhardwaj()
 	//getSciFiMovies()
-	productiveProducersNamedGil()
+	//productiveProducersNamedGil()
+	producersWithGreatestNumberOfLongRunMovies()
 }
