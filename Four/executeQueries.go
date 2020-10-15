@@ -30,6 +30,7 @@ func connectToMongoQuery() *mongo.Client {
 	return client
 }
 
+//Works
 func actorsNamedPhiAndDidntActIn2014() {
 
 	client := connectToMongoQuery()
@@ -38,13 +39,42 @@ func actorsNamedPhiAndDidntActIn2014() {
 
 	unwindActorsStage := bson.D{{"$unwind", "$actors.actors"}}
 	joinWithMembersStage := bson.D{{"$lookup", bson.D{{"from", "Members"},
-		{"localField", "actors.actors.actor"}, {"foreignField", "_id"}, {"as", "actor_id"}}}}
-	filterOutDeadActorsStage := bson.D{{"$match", bson.D{{"actor_id.deathYear", 0}}}}
-	filterOutDeadActorsStagePartTwoElectricBoogaloo := bson.D{{"$match", bson.D{{"actor_id.deathYear", nil}}}}
+		{"localField", "actors.actors.actor"}, {"foreignField", "_id"}, {"as", "actor"}}}}
+	filterOutDeadActorsStage := bson.D{{"$match", bson.D{{"actor.deathYear", 0}}}}
+	startsWithPhiStage := bson.D{{"$match", bson.D{{"actor.name",
+		bson.D{{"$regex", "^Phi"}}}}}}
+	getActors2014 := bson.D{{"$match", bson.D{{"startYear", 2014}}}}
 
 	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
-		mongo.Pipeline{unwindActorsStage, joinWithMembersStage, filterOutDeadActorsStage,
-			filterOutDeadActorsStagePartTwoElectricBoogaloo})
+		mongo.Pipeline{unwindActorsStage, joinWithMembersStage, filterOutDeadActorsStage, startsWithPhiStage,
+			getActors2014})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	var idList []interface{}
+
+	for showInfoCursor.Next(context.Background()) {
+		var actor bson.M
+		if err = showInfoCursor.Decode(&actor); err != nil {
+			log.Fatal(err)
+		}
+		idList = append(idList, actor["_id"])
+	}
+
+	err = showInfoCursor.Close(context.Background())
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	filterOutBadActors := bson.D{{"$match", bson.D{{"actor._id",
+		bson.D{{"$nin", idList}}}}}}
+
+	showInfoCursor, err = client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{unwindActorsStage, joinWithMembersStage, filterOutDeadActorsStage, startsWithPhiStage,
+			filterOutBadActors})
 
 	if err != nil {
 		log.Error(err)
@@ -53,17 +83,6 @@ func actorsNamedPhiAndDidntActIn2014() {
 	t := time.Now()
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
-
-	count := 0
-	max := 1
-
-	for showInfoCursor.Next(context.Background()) {
-		if count < max {
-			fmt.Println(showInfoCursor.Current)
-		}
-
-		count += 1
-	}
 
 	err = showInfoCursor.Close(context.Background())
 
@@ -230,9 +249,9 @@ func producersWithGreatestNumberOfLongRunMovies() {
 }
 
 func main() {
-	//actorsNamedPhiAndDidntActIn2014()
+	actorsNamedPhiAndDidntActIn2014()
 	//avgRuntimeWrittenByLivingBhardwaj()
 	//getSciFiMovies()
-	productiveProducersNamedGil()
+	//productiveProducersNamedGil()
 	//producersWithGreatestNumberOfLongRunMovies()
 }
