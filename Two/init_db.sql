@@ -19,11 +19,7 @@ CREATE TABLE IF NOT EXISTS Genre(
 
 CREATE TABLE IF NOT EXISTS Title_Genre(
     title INTEGER NOT NULL ,
-    genre INTEGER NOT NULL ,
-    FOREIGN KEY(title)
-        REFERENCES Title(id) ,
-    FOREIGN KEY(genre)
-        REFERENCES Genre(id)
+    genre INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Member(
@@ -35,38 +31,22 @@ CREATE TABLE IF NOT EXISTS Member(
 
 CREATE TABLE IF NOT EXISTS Title_Writer(
     writer INTEGER NOT NULL ,
-    title INTEGER NOT NULL ,
-    FOREIGN KEY(title)
-      REFERENCES Title(id) ,
-    FOREIGN KEY(writer)
-      REFERENCES Member(id)
+    title INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Title_Director(
     director INTEGER NOT NULL ,
-    title INTEGER NOT NULL ,
-    FOREIGN KEY(title)
-       REFERENCES Title(id) ,
-    FOREIGN KEY(director)
-       REFERENCES Member(id)
+    title INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Title_Actor(
     actor INTEGER NOT NULL ,
-    title INTEGER NOT NULL ,
-    FOREIGN KEY(title)
-      REFERENCES Title(id) ,
-    FOREIGN KEY(actor)
-      REFERENCES Member(id)
+    title INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Title_Producer(
     producer INTEGER NOT NULL ,
-    title INTEGER NOT NULL ,
-    FOREIGN KEY(title)
-        REFERENCES Title(id) ,
-    FOREIGN KEY(producer)
-        REFERENCES Member(id)
+    title INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Role(

@@ -115,7 +115,7 @@ func processGenres(genres map[string]int, genreList []string, titleID string, w 
 
 		err := w.Write(line)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}
 
@@ -126,7 +126,7 @@ func readGenresIntoDB(genres map[string]int) {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	for genre, id := range genres {
@@ -136,17 +136,17 @@ func readGenresIntoDB(genres map[string]int) {
 		commandTag, err := conn.Exec(context.Background(), queryString, id, genre)
 
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 
 		if commandTag.RowsAffected() == 0 {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 }
 
@@ -159,7 +159,7 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 
 	file, err := os.Open("/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/Data/title.tsv")
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	defer file.Close()
 
@@ -172,7 +172,7 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 
 	genreFile, err := os.Create("Two/genre.csv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer genreFile.Close()
 
@@ -231,25 +231,25 @@ func addTitlesToDb(m map[string]title) {
 
 	file, err := os.Create("Two/result.tsv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer file.Close()
 
 	for _, t := range m {
 		_, err := file.WriteString(t.ToTSVString())
 		if err != nil {
-			log.Fatal()
+			log.Error()
 		}
 
 		_, err = file.WriteString("\n")
 		if err != nil {
-			log.Fatal()
+			log.Error()
 		}
 	}
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Title FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/result.tsv' " +
@@ -258,16 +258,16 @@ func addTitlesToDb(m map[string]title) {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 }
@@ -276,7 +276,7 @@ func addGenreToTableLink() {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Title_Genre FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/genre.csv' " +
@@ -285,23 +285,21 @@ func addGenreToTableLink() {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 }
 
-func populateTitleTable(wg *sync.WaitGroup, titleIdsChan chan map[string]int) {
-
-	defer wg.Done()
+func populateTitleTable() map[string]int {
 
 	titles := make(map[string]title)
 
@@ -310,14 +308,14 @@ func populateTitleTable(wg *sync.WaitGroup, titleIdsChan chan map[string]int) {
 	addTitlesToDb(titles)
 	addGenreToTableLink()
 
-	titleIdsChan <- titleIds
+	return titleIds
 }
 
 func addMembersToDB() {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Member FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/member.tsv' " +
@@ -326,23 +324,21 @@ func addMembersToDB() {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 }
 
-func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
-
-	defer wg.Done()
+func getNamesMap() map[string]person {
 
 	people := make(map[string]person)
 
@@ -360,7 +356,7 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 
 	file, err = os.Create("Two/member.tsv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer file.Close()
 
@@ -402,7 +398,7 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 
 				err := w.Write(line)
 				if err != nil {
-					log.Fatal(err)
+					log.Error(err)
 				}
 			}
 		}
@@ -414,13 +410,13 @@ func getNamesMap(wg *sync.WaitGroup, peopleChan chan map[string]person) {
 
 	addMembersToDB()
 
-	peopleChan <- people
+	return people
 }
 
 func addWritersToDB() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Title_Writer FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_writer.csv' " +
@@ -429,23 +425,23 @@ func addWritersToDB() {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 }
 
 func addDirectorsToDB() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Title_Director FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_director.csv' " +
@@ -454,16 +450,16 @@ func addDirectorsToDB() {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 }
 
@@ -483,7 +479,7 @@ func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[st
 
 	wFile, err := os.Create("Two/title_writer.csv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer wFile.Close()
 
@@ -491,7 +487,7 @@ func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[st
 
 	dFile, err := os.Create("Two/title_director.csv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer dFile.Close()
 
@@ -532,7 +528,7 @@ func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[st
 
 							err := dWriter.Write(lines)
 							if err != nil {
-								log.Fatal(err)
+								log.Error(err)
 							}
 						}
 					}
@@ -551,7 +547,7 @@ func readInCrewTSV(wg *sync.WaitGroup, people map[string]person, titleIds map[st
 
 							err := writerWriter.Write(lines)
 							if err != nil {
-								log.Fatal(err)
+								log.Error(err)
 							}
 						}
 					}
@@ -572,7 +568,7 @@ func addRolesToDatabase(roleMap map[string]int) {
 
 	roleFile, err := os.Create("Two/roles.tsv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer roleFile.Close()
 
@@ -590,18 +586,18 @@ func addRolesToDatabase(roleMap map[string]int) {
 
 		_, err := writer.WriteString(builder.String())
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}
 
 	err = writer.Flush()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Role(id, role) FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/roles.tsv' " +
@@ -610,16 +606,16 @@ func addRolesToDatabase(roleMap map[string]int) {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 }
@@ -628,7 +624,7 @@ func addProducersToDatabase() {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Title_Producer FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_producer.csv' " +
@@ -637,23 +633,23 @@ func addProducersToDatabase() {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 }
 
 func addActorsToDatabase() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Title_Actor FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/title_actor.csv' " +
@@ -662,16 +658,16 @@ func addActorsToDatabase() {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 }
@@ -679,7 +675,7 @@ func addActorsToDatabase() {
 func addActorTitleRoleToDB() {
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignmenttwo")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	queryString := "COPY Actor_Title_Role FROM '/home/dan/Documents/College/BigData/IntroToBigDataAssignments/Two/actorTitleRole.csv' " +
@@ -688,16 +684,16 @@ func addActorTitleRoleToDB() {
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	err = conn.Close(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 }
@@ -721,7 +717,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 	actorFile, err := os.Create("Two/title_actor.csv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer actorFile.Close()
 
@@ -729,7 +725,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 	producerFile, err := os.Create("Two/title_producer.csv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer producerFile.Close()
 
@@ -737,7 +733,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 	actorTitleRoleFile, err := os.Create("Two/actorTitleRole.csv")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer producerFile.Close()
 
@@ -759,7 +755,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 			}
 
 			row := strings.Split(txt, "\t")
-			if len(row) == 6 && (row[3] == "producer" || row[3] == "actor") {
+			if len(row) == 6 && (row[3] == "producer" || row[3] == "actor" || row[3] == "actress") {
 
 				titleId, titleOK := titleIds[row[0]] // Get titleID from tconst
 				p, personOK := people[row[2]]        // Get memberID from nconst
@@ -786,7 +782,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 						//At this point we are guaranteed to have role ids
 						//Map lookup is O(1) so doing it twice isn't a big deal
-						if row[3] == "actor" {
+						if row[3] == "actor" || row[3] == "actress" {
 							var actorTitleRoleLines []string
 							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(p.MemberID))
 							actorTitleRoleLines = append(actorTitleRoleLines, strconv.Itoa(titleId))
@@ -794,19 +790,19 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 							err := actorTitleRoleWriter.Write(actorTitleRoleLines)
 							if err != nil {
-								log.Fatal(err)
+								log.Error(err)
 							}
 						}
 					}
 
-					if row[3] == "actor" {
+					if row[3] == "actor" || row[3] == "actress" {
 						var actorLines []string
 						actorLines = append(actorLines, strconv.Itoa(p.MemberID))
 						actorLines = append(actorLines, strconv.Itoa(titleId))
 
 						err := actorWriter.Write(actorLines)
 						if err != nil {
-							log.Fatal(err)
+							log.Error(err)
 						}
 					} else {
 						var producerLines []string
@@ -815,7 +811,7 @@ func readInActorsAndProducers(wg *sync.WaitGroup, people map[string]person, titl
 
 						err := producerWriter.Write(producerLines)
 						if err != nil {
-							log.Fatal(err)
+							log.Error(err)
 						}
 					}
 				}
@@ -840,20 +836,10 @@ func main() {
 
 	start := time.Now()
 
+	titleIds := populateTitleTable()
+	people := getNamesMap()
+
 	wg := new(sync.WaitGroup)
-
-	titleIdsChan := make(chan map[string]int)
-	peopleChan := make(chan map[string]person)
-
-	wg.Add(2)
-
-	go populateTitleTable(wg, titleIdsChan)
-	go getNamesMap(wg, peopleChan)
-
-	titleIds := <-titleIdsChan
-	people := <-peopleChan
-
-	wg.Wait()
 
 	wg.Add(2)
 
