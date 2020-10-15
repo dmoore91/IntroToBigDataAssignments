@@ -224,7 +224,7 @@ func getLongRunningProducers() {
 		"FROM Member " +
 		"INNER JOIN Title_Producer ON Title_Producer.producer = Member.id " +
 		"INNER JOIN Title ON Title.id = Title_Producer.title " +
-		"WHERE deathYear IS NOT NULL AND runtimeMinutes > 120 " +
+		"WHERE deathYear IS NULL AND runtimeMinutes > 120 " +
 		"GROUP BY name " +
 		"HAVING COUNT (name)=( " +
 		"SELECT MAX(tmp.c) FROM ( " +
@@ -232,7 +232,7 @@ func getLongRunningProducers() {
 		"FROM Member " +
 		"INNER JOIN Title_Producer ON Title_Producer.producer = Member.id " +
 		"INNER JOIN Title ON Title.id = Title_Producer.title " +
-		"WHERE deathYear IS NOT NULL AND runtimeMinutes > 120 " +
+		"WHERE deathYear IS NULL AND runtimeMinutes > 120 " +
 		"GROUP BY name) tmp);"
 
 	rows, err := conn.Query(context.Background(), queryString)
