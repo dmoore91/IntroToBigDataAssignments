@@ -149,6 +149,7 @@ func getSciFiMovies() {
 
 }
 
+//Works
 func productiveProducersNamedGil() {
 
 	client := connectToMongoQuery()
@@ -160,9 +161,14 @@ func productiveProducersNamedGil() {
 		{"localField", "producers"}, {"foreignField", "_id"}, {"as", "producer"}}}}
 	getGilStage := bson.D{{"$match", bson.D{{"producer.name",
 		bson.D{{"$regex", "Gill"}}}}}}
+	get2017Stage := bson.D{{"$match", bson.D{{"startYear", 2017}}}}
+	addGroupAndCountStage := bson.D{{"$group", bson.D{{"_id", "$producer.name"},
+		{"count", bson.D{{"$sum", 1}}}}}}
+	filterOver50Stage := bson.D{{"$match", bson.D{{"count", bson.D{{"$gt", 50}}}}}}
 
 	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
-		mongo.Pipeline{unwindProducersStage, joinWithMembersStageProducer, getGilStage})
+		mongo.Pipeline{unwindProducersStage, joinWithMembersStageProducer, getGilStage, get2017Stage,
+			addGroupAndCountStage, filterOver50Stage})
 
 	if err != nil {
 		log.Error(err)
@@ -212,15 +218,8 @@ func producersWithGreatestNumberOfLongRunMovies() {
 	elapsed := t.Sub(start)
 	fmt.Println("It took  " + elapsed.String() + " to run this query")
 
-	count := 0
-	max := 10
-
 	for showInfoCursor.Next(context.Background()) {
-		if count < max {
-			fmt.Println(showInfoCursor.Current)
-		}
-
-		count += 1
+		fmt.Println(showInfoCursor.Current)
 	}
 
 	err = showInfoCursor.Close(context.Background())
@@ -234,6 +233,6 @@ func main() {
 	//actorsNamedPhiAndDidntActIn2014()
 	//avgRuntimeWrittenByLivingBhardwaj()
 	//getSciFiMovies()
-	//productiveProducersNamedGil()
-	producersWithGreatestNumberOfLongRunMovies()
+	productiveProducersNamedGil()
+	//producersWithGreatestNumberOfLongRunMovies()
 }
