@@ -37,7 +37,7 @@ func actorsNamedPhiAndDidntActIn2014() {
 	joinWithMembersStage := bson.D{{"$lookup", bson.D{{"from", "Members"},
 		{"localField", "actors.actors.actor"}, {"foreignField", "_id"}, {"as", "actor_id"}}}}
 	filterOutDeadActorsStage := bson.D{{"$match", bson.D{{"actor_id.deathYear", 0}}}}
-	filterOutDeadActorsStagePartTwoElectricBoogaloo := bson.D{{"$match", bson.D{{"actor_id.deathYear", 0}}}}
+	filterOutDeadActorsStagePartTwoElectricBoogaloo := bson.D{{"$match", bson.D{{"actor_id.deathYear", nil}}}}
 
 	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
 		mongo.Pipeline{unwindActorsStage, joinWithMembersStage, filterOutDeadActorsStage,
@@ -65,6 +65,34 @@ func actorsNamedPhiAndDidntActIn2014() {
 	}
 }
 
+func avgRuntimeWrittenByLivingBhardwaj() {
+	client := connectToMongoQuery()
+
+	unwindActorsStage := bson.D{{"$unwind", "$writers"}}
+	joinWithMembersStage := bson.D{{"$lookup", bson.D{{"from", "Members"},
+		{"localField", "writers"}, {"foreignField", "_id"}, {"as", "writer"}}}}
+	getBhardwajStage := bson.D{{"$match", bson.D{{"writer.name",
+		bson.D{{"$regex", "Bhardwaj"}}}}}}
+
+	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{unwindActorsStage, joinWithMembersStage, getBhardwajStage})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	for showInfoCursor.Next(context.Background()) {
+		fmt.Println(showInfoCursor.Current)
+	}
+
+	err = showInfoCursor.Close(context.Background())
+
+	if err != nil {
+		log.Error(err)
+	}
+}
+
 func main() {
-	actorsNamedPhiAndDidntActIn2014()
+	//actorsNamedPhiAndDidntActIn2014()
+	avgRuntimeWrittenByLivingBhardwaj()
 }
