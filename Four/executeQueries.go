@@ -148,8 +148,44 @@ func getSciFiMovies() {
 
 }
 
+func productiveProducersNamedGil() {
+
+	client := connectToMongoQuery()
+
+	start := time.Now()
+
+	unwindProducersStage := bson.D{{"$unwind", "$producers"}}
+	joinWithMembersStageProducer := bson.D{{"$lookup", bson.D{{"from", "Members"},
+		{"localField", "producers"}, {"foreignField", "_id"}, {"as", "producer"}}}}
+	getGilStage := bson.D{{"$match", bson.D{{"producer.name",
+		bson.D{{"$regex", "Gill"}}}}}}
+
+	showInfoCursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{unwindProducersStage, joinWithMembersStageProducer, getGilStage})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	for showInfoCursor.Next(context.Background()) {
+		fmt.Println(showInfoCursor.Current)
+	}
+
+	err = showInfoCursor.Close(context.Background())
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
+
+}
+
 func main() {
 	//actorsNamedPhiAndDidntActIn2014()
 	//avgRuntimeWrittenByLivingBhardwaj()
-	getSciFiMovies()
+	//getSciFiMovies()
+	productiveProducersNamedGil()
 }
