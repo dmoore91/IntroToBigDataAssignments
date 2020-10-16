@@ -1,0 +1,60 @@
+1) db.Movies.explain().aggregate(
+        [
+            {"$unwind" : "$actors.actors"},
+            { $lookup:
+               {
+                 from: "Members",
+                 localField: "actors.actors.actor",
+                 foreignField: "_id",
+                 as: "actor"
+               }
+            },
+            { $match : { "actor.deathYear": 0 } },
+            { $match : { "actor.name": { $regex: "^Phi" } } },
+            { $match : { startYear : 2014 } }
+        ]
+    )
+
+2) db.Movies.explain().aggregate(
+              [
+                  {"$unwind" : "$producers"},
+                  { $lookup:
+                     {
+                       from: "Members",
+                       localField: "producers",
+                       foreignField: "_id",
+                       as: "producer"
+                     }
+                  },
+                  { $match : { "producer.name": { $regex: "Gill" } } },
+                  { $match : { "startYear": 2017 } },
+                  {
+                    $group: {
+                      _id: "producer.name",
+                      count: { $sum : 1 }
+                    }
+                 },
+                 { $match : { count: { $gt: 50 } } }
+              ]
+          )
+
+3) db.Movies.explain().aggregate(
+           [
+               {"$unwind" : "$writers"},
+               { $lookup:
+                  {
+                    from: "Members",
+                    localField: "writers",
+                    foreignField: "_id",
+                    as: "writer"
+                  }
+               },
+               { $match : { "writer.name": { $regex: "Bhardwaj" } } },
+               {
+                  $group: {
+                    _id: null,
+                    avg: { $avg : $runtime }
+                  }
+               }
+           ]
+       )

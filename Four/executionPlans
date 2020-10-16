@@ -1,0 +1,221 @@
+1) {
+   	"stages" : [
+   		{
+   			"$cursor" : {
+   				"queryPlanner" : {
+   					"plannerVersion" : 1,
+   					"namespace" : "assignment_four.Movies",
+   					"indexFilterSet" : false,
+   					"parsedQuery" : {
+   						"startYear" : {
+   							"$eq" : 2014
+   						}
+   					},
+   					"queryHash" : "C408DD33",
+   					"planCacheKey" : "C408DD33",
+   					"winningPlan" : {
+   						"stage" : "COLLSCAN",
+   						"filter" : {
+   							"startYear" : {
+   								"$eq" : 2014
+   							}
+   						},
+   						"direction" : "forward"
+   					},
+   					"rejectedPlans" : [ ]
+   				}
+   			}
+   		},
+   		{
+   			"$unwind" : {
+   				"path" : "$actors.actors"
+   			}
+   		},
+   		{
+   			"$lookup" : {
+   				"from" : "Members",
+   				"as" : "actor",
+   				"localField" : "actors.actors.actor",
+   				"foreignField" : "_id"
+   			}
+   		},
+   		{
+   			"$match" : {
+   				"$and" : [
+   					{
+   						"actor.deathYear" : {
+   							"$eq" : 0
+   						}
+   					},
+   					{
+   						"actor.name" : {
+   							"$regex" : "^Phi"
+   						}
+   					}
+   				]
+   			}
+   		}
+   	],
+   	"serverInfo" : {
+   		"host" : "dan-MS-7C02",
+   		"port" : 27017,
+   		"version" : "4.4.1",
+   		"gitVersion" : "ad91a93a5a31e175f5cbf8c69561e788bbc55ce1"
+   	},
+   	"ok" : 1
+   }
+
+2) {
+   	"stages" : [
+   		{
+   			"$cursor" : {
+   				"queryPlanner" : {
+   					"plannerVersion" : 1,
+   					"namespace" : "assignment_four.Movies",
+   					"indexFilterSet" : false,
+   					"parsedQuery" : {
+   						"startYear" : {
+   							"$eq" : 2017
+   						}
+   					},
+   					"queryHash" : "E32D1A2C",
+   					"planCacheKey" : "E32D1A2C",
+   					"winningPlan" : {
+   						"stage" : "PROJECTION_DEFAULT",
+   						"transformBy" : {
+   							"producer.name" : 1,
+   							"producers" : 1,
+   							"_id" : 0
+   						},
+   						"inputStage" : {
+   							"stage" : "COLLSCAN",
+   							"filter" : {
+   								"startYear" : {
+   									"$eq" : 2017
+   								}
+   							},
+   							"direction" : "forward"
+   						}
+   					},
+   					"rejectedPlans" : [ ]
+   				}
+   			}
+   		},
+   		{
+   			"$unwind" : {
+   				"path" : "$producers"
+   			}
+   		},
+   		{
+   			"$lookup" : {
+   				"from" : "Members",
+   				"as" : "producer",
+   				"localField" : "producers",
+   				"foreignField" : "_id"
+   			}
+   		},
+   		{
+   			"$match" : {
+   				"producer.name" : {
+   					"$regex" : "Gill"
+   				}
+   			}
+   		},
+   		{
+   			"$group" : {
+   				"_id" : {
+   					"$const" : "producer.name"
+   				},
+   				"count" : {
+   					"$sum" : {
+   						"$const" : 1
+   					}
+   				}
+   			}
+   		},
+   		{
+   			"$match" : {
+   				"count" : {
+   					"$gt" : 50
+   				}
+   			}
+   		}
+   	],
+   	"serverInfo" : {
+   		"host" : "dan-MS-7C02",
+   		"port" : 27017,
+   		"version" : "4.4.1",
+   		"gitVersion" : "ad91a93a5a31e175f5cbf8c69561e788bbc55ce1"
+   	},
+   	"ok" : 1
+   }
+
+3) {
+   	"stages" : [
+   		{
+   			"$cursor" : {
+   				"queryPlanner" : {
+   					"plannerVersion" : 1,
+   					"namespace" : "assignment_four.Movies",
+   					"indexFilterSet" : false,
+   					"parsedQuery" : {
+
+   					},
+   					"queryHash" : "1DBF68FE",
+   					"planCacheKey" : "1DBF68FE",
+   					"winningPlan" : {
+   						"stage" : "PROJECTION_DEFAULT",
+   						"transformBy" : {
+   							"runtime" : 1,
+   							"writer.name" : 1,
+   							"writers" : 1,
+   							"_id" : 0
+   						},
+   						"inputStage" : {
+   							"stage" : "COLLSCAN",
+   							"direction" : "forward"
+   						}
+   					},
+   					"rejectedPlans" : [ ]
+   				}
+   			}
+   		},
+   		{
+   			"$unwind" : {
+   				"path" : "$writers"
+   			}
+   		},
+   		{
+   			"$lookup" : {
+   				"from" : "Members",
+   				"as" : "writer",
+   				"localField" : "writers",
+   				"foreignField" : "_id"
+   			}
+   		},
+   		{
+   			"$match" : {
+   				"writer.name" : {
+   					"$regex" : "Bhardwaj"
+   				}
+   			}
+   		},
+   		{
+   			"$group" : {
+   				"_id" : {
+   					"$const" : null
+   				},
+   				"avg" : {
+   					"$avg" : "$runtime"
+   				}
+   			}
+   		}
+   	],
+   	"serverInfo" : {
+   		"host" : "dan-MS-7C02",
+   		"port" : 27017,
+   		"version" : "4.4.1",
+   		"gitVersion" : "ad91a93a5a31e175f5cbf8c69561e788bbc55ce1"
+   	},
+   	"ok" : 1
+   }
