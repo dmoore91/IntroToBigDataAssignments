@@ -296,3 +296,86 @@
    	},
    	"ok" : 1
    }
+
+5) {
+   	"stages" : [
+   		{
+   			"$cursor" : {
+   				"queryPlanner" : {
+   					"plannerVersion" : 1,
+   					"namespace" : "assignment_four.Movies",
+   					"indexFilterSet" : false,
+   					"parsedQuery" : {
+
+   					},
+   					"queryHash" : "8B3D4AB8",
+   					"planCacheKey" : "8B3D4AB8",
+   					"winningPlan" : {
+   						"stage" : "COLLSCAN",
+   						"direction" : "forward"
+   					},
+   					"rejectedPlans" : [ ]
+   				}
+   			}
+   		},
+   		{
+   			"$unwind" : {
+   				"path" : "$actors.actors"
+   			}
+   		},
+   		{
+   			"$unwind" : {
+   				"path" : "$genres"
+   			}
+   		},
+   		{
+   			"$match" : {
+   				"genres" : {
+   					"$eq" : "Sci-Fi"
+   				}
+   			}
+   		},
+   		{
+   			"$unwind" : {
+   				"path" : "$directors"
+   			}
+   		},
+   		{
+   			"$lookup" : {
+   				"from" : "Members",
+   				"as" : "actor",
+   				"localField" : "actors.actors.actor",
+   				"foreignField" : "_id"
+   			}
+   		},
+   		{
+   			"$match" : {
+   				"actor._id" : {
+   					"$eq" : 244
+   				}
+   			}
+   		},
+   		{
+   			"$lookup" : {
+   				"from" : "Members",
+   				"as" : "director",
+   				"localField" : "directors",
+   				"foreignField" : "_id"
+   			}
+   		},
+   		{
+   			"$match" : {
+   				"director.name" : {
+   					"$eq" : "James Cameron"
+   				}
+   			}
+   		}
+   	],
+   	"serverInfo" : {
+   		"host" : "dan-MS-7C02",
+   		"port" : 27017,
+   		"version" : "4.4.1",
+   		"gitVersion" : "ad91a93a5a31e175f5cbf8c69561e788bbc55ce1"
+   	},
+   	"ok" : 1
+   }

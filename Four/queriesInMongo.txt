@@ -81,3 +81,30 @@
                   { $limit : 1 }
               ]
           )
+
+5) db.Movies.explain().aggregate(
+                 [
+                     {"$unwind" : "$actors.actors"},
+                     {"$unwind" : "$genres"},
+                     {"$unwind" : "$directors"},
+                     { $lookup:
+                        {
+                          from: "Members",
+                          localField: "actors.actors.actor",
+                          foreignField: "_id",
+                          as: "actor"
+                        }
+                     },
+                     { $lookup:
+                         {
+                           from: "Members",
+                           localField: "directors",
+                           foreignField: "_id",
+                           as: "director"
+                         }
+                     },
+                     { $match : { "genres": "Sci-Fi" } },
+                     { $match : { "director.name": "James Cameron" } },
+                     { $match : { "actor._id": 244 } }
+                 ]
+             )
