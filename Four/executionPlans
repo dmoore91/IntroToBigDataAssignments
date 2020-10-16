@@ -219,3 +219,80 @@
    	},
    	"ok" : 1
    }
+
+4) {
+   	"stages" : [
+   		{
+   			"$cursor" : {
+   				"queryPlanner" : {
+   					"plannerVersion" : 1,
+   					"namespace" : "assignment_four.Movies",
+   					"indexFilterSet" : false,
+   					"parsedQuery" : {
+   						"runtime" : {
+   							"$gt" : 120
+   						}
+   					},
+   					"queryHash" : "A300E575",
+   					"planCacheKey" : "A300E575",
+   					"winningPlan" : {
+   						"stage" : "PROJECTION_DEFAULT",
+   						"transformBy" : {
+   							"producer.name" : 1,
+   							"producers" : 1,
+   							"_id" : 0
+   						},
+   						"inputStage" : {
+   							"stage" : "COLLSCAN",
+   							"filter" : {
+   								"runtime" : {
+   									"$gt" : 120
+   								}
+   							},
+   							"direction" : "forward"
+   						}
+   					},
+   					"rejectedPlans" : [ ]
+   				}
+   			}
+   		},
+   		{
+   			"$unwind" : {
+   				"path" : "$producers"
+   			}
+   		},
+   		{
+   			"$lookup" : {
+   				"from" : "Members",
+   				"as" : "producer",
+   				"localField" : "producers",
+   				"foreignField" : "_id"
+   			}
+   		},
+   		{
+   			"$group" : {
+   				"_id" : "$producer.name",
+   				"count" : {
+   					"$sum" : {
+   						"$const" : 1
+   					}
+   				}
+   			}
+   		},
+   		{
+   			"$sort" : {
+   				"sortKey" : {
+   					"count" : -1
+   				},
+   				"limit" : NumberLong(1)
+   			}
+   		}
+   	],
+   	"serverInfo" : {
+   		"host" : "dan-MS-7C02",
+   		"port" : 27017,
+   		"version" : "4.4.1",
+   		"gitVersion" : "ad91a93a5a31e175f5cbf8c69561e788bbc55ce1"
+   	},
+   	"ok" : 1
+   }
