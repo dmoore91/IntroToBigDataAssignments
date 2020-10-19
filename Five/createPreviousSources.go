@@ -19,7 +19,7 @@ func createComedyMovieNMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE VIEW ComedyMovie AS " +
-		"SELECT id, title, year FROM Title " +
+		"SELECT Title.id, title, year FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre LIKE 'Comedy';"
@@ -51,7 +51,7 @@ func createNonComedyMovieNMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE VIEW NonComedyMovie AS " +
-		"SELECT id, title, year FROM Title " +
+		"SELECT Title.id, title, year FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy';"
@@ -83,7 +83,7 @@ func createComedyActorNMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE VIEW ComedyActor AS " +
-		"SELECT id, name, birthYear, deathYear FROM Member " +
+		"SELECT Member.id, name, birthYear, deathYear FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
@@ -116,7 +116,7 @@ func createNonComedyActorNMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE VIEW NonComedyActor AS " +
-		"SELECT id, name, birthYear, deathYear FROM Member " +
+		"SELECT Member.id, name, birthYear, deathYear FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
@@ -178,7 +178,7 @@ func createComedyMovieMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE MATERIALIZED VIEW ComedyMovie AS " +
-		"SELECT id, title, year FROM Title " +
+		"SELECT Title.id, title, year FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre LIKE 'Comedy';"
@@ -210,7 +210,7 @@ func createNonComedyMovieMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE MATERIALIZED VIEW NonComedyMovie AS " +
-		"SELECT id, title, year FROM Title " +
+		"SELECT Title.id, title, year FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy';"
@@ -242,7 +242,7 @@ func createComedyActorMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE MATERIALIZED VIEW ComedyActor AS " +
-		"SELECT id, name, birthYear, deathYear FROM Member " +
+		"SELECT Member.id, name, birthYear, deathYear FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
@@ -275,7 +275,7 @@ func createNonComedyActorMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE MATERIALIZED VIEW NonComedyActor AS " +
-		"SELECT id, name, birthYear, deathYear FROM Member " +
+		"SELECT Member.id, name, birthYear, deathYear FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
