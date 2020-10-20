@@ -1,9 +1,21 @@
-SELECT name
-FROM ((SELECT id, name, birthYear, deathYear FROM ComedyActor) UNION (SELECT id, name, birthYear, deathYear FROM NonComedyActor)) AS actor
-WHERE (SELECT COUNT(All_Movie.id)
-FROM ((SELECT id, title, startYear, 'Comedy' AS genre FROM ComedyMovie) UNION (SELECT id, title, startYear, 'Not Comedy' AS genre FROM NonComedyMovie)) AS All_Movie
-INNER JOIN (SELECT actor, title FROM ActedIn) as All_Movie_Actor ON All_Movie_Actor.title = All_Movie.id
-WHERE startYear BETWEEN 2000 AND 2005 and All_Movie_Actor.actor = actor.id) > 10;
+(SELECT actors.name
+FROM (SELECT name, COUNT(actor.id)
+FROM ComedyActor AS actor
+INNER JOIN ActedIn ON ActedIn.actor = actor.id
+INNER JOIN ComedyMovie ON ComedyMovie.title = ComedyMovie.id
+WHERE actor.deathYear IS NULL AND  startYear BETWEEN 2000 AND 2005
+GROUP BY name
+HAVING COUNT(actor.id) > 10) as actors;)
+UNION
+(SELECT actors.name
+FROM (SELECT name, COUNT(actor.id)
+FROM NonComedyActor AS actor
+INNER JOIN ActedIn ON ActedIn.actor = actor.id
+INNER JOIN NonComedyMovie ON NonComedyMovie.title = NonComedyMovie.id
+WHERE actor.deathYear IS NULL AND  startYear BETWEEN 2000 AND 2005
+GROUP BY name
+HAVING COUNT(actor.id) > 10) as actors;)
+
 
 SELECT name
 FROM NonComedyActor
