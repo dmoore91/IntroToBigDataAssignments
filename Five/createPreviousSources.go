@@ -19,18 +19,14 @@ func createComedyMovieNMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE VIEW ComedyMovie AS " +
-		"SELECT Title.id, title, year FROM Title " +
+		"SELECT Title.id, Title.title, startYear FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -51,18 +47,14 @@ func createNonComedyMovieNMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE VIEW NonComedyMovie AS " +
-		"SELECT Title.id, title, year FROM Title " +
+		"SELECT Title.id, Title.title, startYear FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -85,17 +77,13 @@ func createComedyActorNMView(wg *sync.WaitGroup) {
 	queryString := "CREATE VIEW ComedyActor AS " +
 		"SELECT Member.id, name, birthYear, deathYear FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
-		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.id " +
+		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE Genre.genre LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -122,13 +110,9 @@ func createNonComedyActorNMView(wg *sync.WaitGroup) {
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE Genre.genre NOT LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -151,13 +135,9 @@ func createActedInNMView(wg *sync.WaitGroup) {
 	queryString := "CREATE VIEW ActedIn AS " +
 		"SELECT actor, title FROM Title_Actor;"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -177,19 +157,15 @@ func createComedyMovieMView(wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	queryString := "CREATE MATERIALIZED VIEW ComedyMovie AS " +
-		"SELECT Title.id, title, year FROM Title " +
+	queryString := "CREATE MATERIALIZED VIEW ComedyMovieMaterialized AS " +
+		"SELECT Title.id, Title.title, startYear FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -209,19 +185,15 @@ func createNonComedyMovieMView(wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	queryString := "CREATE MATERIALIZED VIEW NonComedyMovie AS " +
-		"SELECT Title.id, title, year FROM Title " +
+	queryString := "CREATE MATERIALIZED VIEW NonComedyMovieMaterialized AS " +
+		"SELECT Title.id, Title.title, startYear FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -241,20 +213,16 @@ func createComedyActorMView(wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	queryString := "CREATE MATERIALIZED VIEW ComedyActor AS " +
+	queryString := "CREATE MATERIALIZED VIEW ComedyActorMaterialized AS " +
 		"SELECT Member.id, name, birthYear, deathYear FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
-		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.id " +
+		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE Genre.genre LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -274,20 +242,16 @@ func createNonComedyActorMView(wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	queryString := "CREATE MATERIALIZED VIEW NonComedyActor AS " +
+	queryString := "CREATE MATERIALIZED VIEW NonComedyActorMaterialized AS " +
 		"SELECT Member.id, name, birthYear, deathYear FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
 		"WHERE Genre.genre NOT LIKE 'Comedy';"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
@@ -307,16 +271,12 @@ func createActedInMView(wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	queryString := "CREATE MATERIALIZED VIEW ActedIn AS " +
+	queryString := "CREATE MATERIALIZED VIEW ActedInMaterialized AS " +
 		"SELECT actor, title FROM Title_Actor;"
 
-	commandTag, err := conn.Exec(context.Background(), queryString)
+	_, err = conn.Exec(context.Background(), queryString)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	if commandTag.RowsAffected() == 0 {
 		log.Fatal(err)
 	}
 
