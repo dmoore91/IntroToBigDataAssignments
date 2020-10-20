@@ -86,8 +86,8 @@ func notFunnyActorsNM(wg *sync.WaitGroup) {
 	}
 
 	queryString := "SELECT name " +
-		"FROM ((SELECT id, name, birthYear, deathYear FROM ComedyActor) UNION (SELECT id, name, birthYear, deathYear FROM NonComedyActor)) " +
-		"WHERE name LIKE 'Ja%' AND id NOT IN (SELECT id " +
+		"FROM ((SELECT id, name, birthYear, deathYear FROM ComedyActor) UNION (SELECT id, name, birthYear, deathYear FROM NonComedyActor)) as All_Actor " +
+		"WHERE name LIKE 'Ja%' AND id NOT IN (SELECT All_Actor.id " +
 		"FROM ((SELECT id, name, birthYear, deathYear FROM ComedyActor) UNION (SELECT id, name, birthYear, deathYear FROM NonComedyActor)) as All_Actor " +
 		"INNER JOIN (SELECT actor, title FROM ActedIn) as All_Movie_Actor ON All_Movie_Actor.actor = All_Actor.id " +
 		"INNER JOIN ((SELECT id, title, startYear, 'Comedy' AS genre FROM ComedyMovie) UNION (SELECT id, title, startYear, 'Not Comedy' AS genre FROM NonComedyMovie)) AS All_Movie ON All_Movie.id = All_Movie_Actor.title " +
@@ -120,8 +120,8 @@ func notFunnyActorsM(wg *sync.WaitGroup) {
 	}
 
 	queryString := "SELECT name " +
-		"FROM ((SELECT id, name, birthYear, deathYear FROM ComedyActorMaterialized) UNION (SELECT id, name, birthYear, deathYear FROM NonComedyActorMaterialized)) " +
-		"WHERE name LIKE 'Ja%' AND id NOT IN (SELECT id " +
+		"FROM ((SELECT id, name, birthYear, deathYear FROM ComedyActorMaterialized) UNION (SELECT id, name, birthYear, deathYear FROM NonComedyActorMaterialized)) as All_Actor " +
+		"WHERE name LIKE 'Ja%' AND id NOT IN (SELECT All_Actor.id " +
 		"FROM ((SELECT id, name, birthYear, deathYear FROM ComedyActorMaterialized) UNION (SELECT id, name, birthYear, deathYear FROM NonComedyActorMaterialized)) as All_Actor " +
 		"INNER JOIN (SELECT actor, title FROM ActedInMaterialized) as All_Movie_Actor ON All_Movie_Actor.actor = All_Actor.id " +
 		"INNER JOIN ((SELECT id, title, startYear, 'Comedy' AS genre FROM ComedyMovieMaterialized) UNION (SELECT id, title, startYear, 'Not Comedy' AS genre FROM NonComedyMovieMaterialized)) AS All_Movie " +
