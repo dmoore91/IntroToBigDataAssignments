@@ -22,3 +22,13 @@ This repo is used to hold all my assignments for my Intro To Big Data course. I 
 		* Runs in about 3 seconds
 	* Implement naive functional dependency search to demonstrate how long it takes to brute force functional dependencies
 		* I didn't let this run all the way through but it'll take about 8-9 days to complete. This is because it's intentionally inefficient to demonstrate why brute finding functional dependencies is a terrible idea
+* Four
+	* Wrote loadData.go to read data from assignement_two SQL schema into MongoDB schema.
+	* Implement queries in Mongo to perform queries requested in assignment
+	* Analyzed Mongo queries and add indices to speed up queries
+
+* Five
+	* Wrote createPreviousSources to create previous sources as view over assignment_two data
+	* Wrote gav.go to create global view schemas over previous sources
+	* Implemented queries via global views, ran and timed them
+	* Optimized queries by going to previous sources and removing redundant joins and sources. Ran and timed these as well.
