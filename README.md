@@ -14,7 +14,7 @@ This repo is used to hold all my assignments for my Intro To Big Data course. I 
 	* Wrote an init_db.sql to make a transaction to create all the tables for the schema
 	* Goroutines used to parallelize reading in, processing and writing to disk title and names. These two are run in parallel first becasuse they are not dependent on each other, but the other tables depend on them. Therefore I process them both in parralel and wait for them to finish before moving on to the other tables.
 	* Next tables are split up and parallized so that tables that depend on other tables will not have to be run in parralel but tables that independent are handled in parralel. Essentially handling each "branch of the tree" separately.
-	* Instead of performing milions of I/O events like I was prevously. I write all the data to a file as we process it and then once we're done processing it, read it in using the Postgres COPY command. This is exponentially faster then the previous way I was doing it because we have on the magnitude of millions less I/O/ events to have to deal with the over head of
+	* Instead of performing milionmasters of I/O events like I was prevously. I write all the data to a file as we process it and then once we're done processing it, read it in using the Postgres COPY command. This is exponentially faster then the previous way I was doing it because we have on the magnitude of millions less I/O/ events to have to deal with the over head of
 * Three	
 	* Wrote an init_db.sql to make a transaction to create all the tables for the schema
 	* Reads in data much like I did in assignment two. Slight modifications to account for us writing 1 combined table as opposed to 10 separate tables
@@ -32,3 +32,4 @@ This repo is used to hold all my assignments for my Intro To Big Data course. I 
 	* Wrote gav.go to create global view schemas over previous sources
 	* Implemented queries via global views, ran and timed them
 	* Optimized queries by going to previous sources and removing redundant joins and sources. Ran and timed these as well.
+		* Longest query dropped from 1:03 to 26 seconds. Not a lot time wise but about 50% percentage wise
