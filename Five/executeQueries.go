@@ -19,23 +19,22 @@ func productiveActorsSmartNM(wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	queryString := "(SELECT actors.name " +
+	queryString := "SELECT actors.name " +
 		"FROM (SELECT name, COUNT(actor.id) " +
-		"FROM ComedyActor AS actor " +
+		"FROM ComedyActor AS actor	" +
 		"INNER JOIN ActedIn ON ActedIn.actor = actor.id " +
-		"INNER JOIN ComedyMovie ON ComedyMovie.id = ComedyMovie.id " +
+		"INNER JOIN ComedyMovie ON ActedIn.title = ComedyMovie.id " +
 		"WHERE actor.deathYear IS NULL AND  startYear BETWEEN 2000 AND 2005 " +
 		"GROUP BY name " +
-		"HAVING COUNT(actor.id) > 10) as actors) " +
+		"HAVING COUNT(actor.id) > 10" +
 		"UNION " +
-		"(SELECT actors.name " +
-		"FROM (SELECT name, COUNT(actor.id) " +
+		"SELECT name, COUNT(actor.id) " +
 		"FROM NonComedyActor AS actor " +
 		"INNER JOIN ActedIn ON ActedIn.actor = actor.id " +
-		"INNER JOIN NonComedyMovie ON NonComedyMovie.id = NonComedyMovie.id " +
+		"INNER JOIN NonComedyMovie ON ActedIn.title = NonComedyMovie.id " +
 		"WHERE actor.deathYear IS NULL AND  startYear BETWEEN 2000 AND 2005 " +
 		"GROUP BY name " +
-		"HAVING COUNT(actor.id) > 10) as actors)"
+		"HAVING COUNT(actor.id) > 10) as actors"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -63,23 +62,22 @@ func productiveActorsSmartM(wg *sync.WaitGroup) {
 		log.Fatal(err)
 	}
 
-	queryString := "(SELECT actors.name " +
+	queryString := "SELECT actors.name " +
 		"FROM (SELECT name, COUNT(actor.id) " +
-		"FROM ComedyActorMaterialized AS actor " +
+		"FROM ComedyActorMaterialized AS actor	" +
 		"INNER JOIN ActedInMaterialized ON ActedInMaterialized.actor = actor.id " +
-		"INNER JOIN ComedyMovieMaterialized ON ComedyMovieMaterialized.id = ComedyMovieMaterialized.id " +
+		"INNER JOIN ComedyMovieMaterialized ON ActedInMaterialized.title = ComedyMovieMaterialized.id " +
 		"WHERE actor.deathYear IS NULL AND  startYear BETWEEN 2000 AND 2005 " +
 		"GROUP BY name " +
-		"HAVING COUNT(actor.id) > 10) as actors) " +
+		"HAVING COUNT(actor.id) > 10" +
 		"UNION " +
-		"(SELECT actors.name " +
-		"FROM (SELECT name, COUNT(actor.id) " +
+		"SELECT name, COUNT(actor.id) " +
 		"FROM NonComedyActorMaterialized AS actor " +
 		"INNER JOIN ActedInMaterialized ON ActedInMaterialized.actor = actor.id " +
-		"INNER JOIN NonComedyMovieMaterialized ON NonComedyMovieMaterialized.id = NonComedyMovieMaterialized.id " +
+		"INNER JOIN NonComedyMovieMaterialized ON ActedInMaterialized.title = NonComedyMovieMaterialized.id " +
 		"WHERE actor.deathYear IS NULL AND  startYear BETWEEN 2000 AND 2005 " +
 		"GROUP BY name " +
-		"HAVING COUNT(actor.id) > 10) as actors)"
+		"HAVING COUNT(actor.id) > 10) as actors"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
