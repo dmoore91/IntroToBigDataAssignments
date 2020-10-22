@@ -50,7 +50,8 @@ func createNonComedyMovieNMView(wg *sync.WaitGroup) {
 		"SELECT Title.id, Title.title, startYear FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
-		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy' AND type = 'movie';"
+		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy' AND type = 'movie' " +
+		"GROUP BY (Title.id, Title.title, startYear);"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -79,7 +80,8 @@ func createComedyActorNMView(wg *sync.WaitGroup) {
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
-		"WHERE Genre.genre LIKE 'Comedy';"
+		"INNER JOIN Title ON Title.id = Title_Genre.title " +
+		"WHERE Genre.genre = 'Comedy' AND type = 'movie';"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -110,8 +112,8 @@ func createNonComedyActorNMView(wg *sync.WaitGroup) {
 		"FROM Member " +
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
-		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
-		"WHERE Genre.genre LIKE 'Comedy')"
+		"INNER JOIN Title ON Title.id = Title_Genre.title " +
+		"WHERE Genre.genre = 'Comedy' AND type = 'movie')"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -136,7 +138,9 @@ func createActedInNMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE VIEW ActedIn AS " +
-		"SELECT actor, title FROM Title_Actor;"
+		"SELECT actor, title FROM Title_Actor " +
+		"INNER JOIN Title ON Title.id = Title_Actor.title " +
+		"WHERE type = 'movie';"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -192,7 +196,8 @@ func createNonComedyMovieMView(wg *sync.WaitGroup) {
 		"SELECT Title.id, Title.title, startYear FROM Title " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title.id " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
-		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy' AND type = 'movie';"
+		"WHERE runtimeMinutes >= 75 AND Genre.genre NOT LIKE 'Comedy' AND type = 'movie' " +
+		"GROUP BY (Title.id, Title.title, startYear);"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -221,7 +226,8 @@ func createComedyActorMView(wg *sync.WaitGroup) {
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
-		"WHERE Genre.genre LIKE 'Comedy';"
+		"INNER JOIN Title ON Title.id = Title_Genre.title " +
+		"WHERE Genre.genre = 'Comedy' AND type = 'movie')"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -253,7 +259,8 @@ func createNonComedyActorMView(wg *sync.WaitGroup) {
 		"INNER JOIN Title_Actor ON Title_Actor.actor = Member.id " +
 		"INNER JOIN Title_Genre ON Title_Genre.title = Title_Actor.title " +
 		"INNER JOIN Genre ON Genre.id = Title_Genre.genre " +
-		"WHERE Genre.genre LIKE 'Comedy')"
+		"INNER JOIN Title ON Title.id = Title_Genre.title " +
+		"WHERE Genre.genre = 'Comedy' AND type = 'movie')"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
@@ -278,7 +285,9 @@ func createActedInMView(wg *sync.WaitGroup) {
 	}
 
 	queryString := "CREATE MATERIALIZED VIEW ActedInMaterialized AS " +
-		"SELECT actor, title FROM Title_Actor;"
+		"SELECT actor, title FROM Title_Actor " +
+		"INNER JOIN Title ON Title.id = Title_Actor.title " +
+		"WHERE type = 'movie';"
 
 	_, err = conn.Exec(context.Background(), queryString)
 
