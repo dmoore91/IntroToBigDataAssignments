@@ -10,13 +10,47 @@ import (
 	"time"
 )
 
+type boxDataJSON struct {
+	Lang  string `json:"xml:lang"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type titleJSON struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type imdbIdJSON struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type costJSON struct {
+	DataType string              `json:"datatype"`
+	Type     string              `json:"type"`
+	Value    decimal.NullDecimal `json:"value"`
+}
+
+type distributorJSON struct {
+	Lang  string `json:"xml:lang"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type boxOfficeJSON struct {
+	DataType string              `json:"datatype"`
+	Type     string              `json:"type"`
+	Value    decimal.NullDecimal `json:"value"`
+}
+
 type fileData struct {
-	BoxOfficeCurrencyLabel string              `json:"box_office_currencyLabel"`
-	Title                  string              `json:"titleLabel"`
-	ImdbId                 string              `json:"IMDb_ID"`
-	Cost                   decimal.NullDecimal `json:"cost"`
-	DistributorLabel       string              `json:"distributorLabel"`
-	BoxOffice              int                 `json:"box_office"`
+	BoxOfficeCurrencyLabel boxDataJSON     `json:"box_office_currencyLabel"`
+	Title                  titleJSON       `json:"titleLabel"`
+	ImdbId                 imdbIdJSON      `json:"IMDb_ID"`
+	Cost                   costJSON        `json:"cost"`
+	DistributorLabel       distributorJSON `json:"distributorLabel"`
+	BoxOffice              boxOfficeJSON   `json:"box_office"`
 }
 
 type listOfFileData struct {
