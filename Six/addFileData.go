@@ -105,8 +105,7 @@ func addWithImdbID(data listOfFileData) {
 
 	for _, elem := range data.Data {
 
-		//Should do currency conversions for day movie was released
-
+		// Convert money to us dollars
 		revenue := big.NewFloat(0)
 		cost := big.NewFloat(0)
 
@@ -210,12 +209,24 @@ func addWithImdbID(data listOfFileData) {
 			continue
 		}
 
+		rating := "No Rating"
+
+		if elem.Rating.Value != "" {
+			rating = elem.Rating.Value
+		}
+
+		distributor := "No Distributor"
+
+		if elem.DistributorLabel.Value != "" {
+			distributor = elem.DistributorLabel.Value
+		}
+
 		result, err := collection.UpdateOne(
 			context.Background(),
 			bson.M{"_id": idInt},
 			bson.D{
-				{"$set", bson.D{{"distributor", elem.DistributorLabel.Value},
-					{"rating", elem.Rating.Value},
+				{"$set", bson.D{{"distributor", distributor},
+					{"rating", rating},
 					{"revenue", revenue},
 					{"cost", cost}}},
 			})
