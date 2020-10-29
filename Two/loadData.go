@@ -167,7 +167,6 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 
 	scanner.Scan()
 
-	idx := 1
 	genreNumber := 1
 
 	genreFile, err := os.Create("Two/genre.csv")
@@ -195,12 +194,17 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 			row := strings.Split(txt, "\t")
 			if len(row) == 9 {
 
-				id := strconv.Itoa(idx)
+				idStr := strings.ReplaceAll(row[0], "tt", "")
 
-				titleIds[row[0]] = idx
+				idInt, err := strconv.Atoi(idStr)
+				if err != nil {
+					log.Error(err)
+				}
+
+				titleIds[row[0]] = idInt
 
 				t := title{
-					Id:             id,
+					Id:             idStr,
 					TitleType:      row[1],
 					Title:          row[2],
 					OriginalTitle:  row[3],
@@ -210,8 +214,6 @@ func readInTitles(m map[string]title) (map[string]title, map[string]int) {
 				}
 
 				m[row[0]] = t
-
-				idx += 1
 
 				genres, genreNumber = processGenres(genres, strings.Split(row[8], ","), t.Id, w, genreNumber)
 			}
