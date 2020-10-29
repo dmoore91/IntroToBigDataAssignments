@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/asvvvad/exchange"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -58,6 +61,8 @@ func readInJSON() listOfFileData {
 
 	var dataList listOfFileData
 
+	currencies := mapset.NewSet()
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 
@@ -70,8 +75,12 @@ func readInJSON() listOfFileData {
 			log.Fatal(err)
 		}
 
+		currencies.Add(f.BoxOfficeCurrencyLabel.Value)
+
 		dataList.Data = append(dataList.Data, f)
 	}
+
+	fmt.Println(currencies)
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
@@ -81,6 +90,12 @@ func readInJSON() listOfFileData {
 }
 
 func addWithImdbID(data listOfFileData) {
+
+	ex := exchange.New("USD")
+	rates, err := ex.LatestRatesAll()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	client := connectToMongo()
 
@@ -92,25 +107,107 @@ func addWithImdbID(data listOfFileData) {
 
 		//Should do currency conversions for day movie was released
 
-		var revenue decimal.Decimal
-		var cost decimal.Decimal
+		revenue := big.NewFloat(0)
+		cost := big.NewFloat(0)
 
-		if elem.BoxOfficeCurrencyLabel.Value == "United States dollar" {
+		t := new(big.Float)
 
+		switch elem.BoxOfficeCurrencyLabel.Value {
+		case "United States dollar":
 			if elem.BoxOffice.Value.Valid {
-				revenue = elem.BoxOffice.Value.Decimal
+				revenue = elem.BoxOffice.Value.Decimal.BigFloat()
 			}
 
 			if elem.Cost.Value.Valid {
-				cost = elem.Cost.Value.Decimal
+				cost = elem.Cost.Value.Decimal.BigFloat()
+			}
+		case "Australian dollar":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["AUD"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["AUD"])
+			}
+		case "Russian ruble":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["RUB"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["RUB"])
+			}
+		case "pound sterling":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["GBP"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["GBP"])
+			}
+		case "euro":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["EUR"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["EUR"])
+			}
+		case "Philippine peso":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["PHP"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["PHP"])
+			}
+		case "Hong Kong dollar":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["HKD"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["HKD"])
+			}
+		case "Indian rupee":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["INR"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["INR"])
+			}
+		case "Thai baht":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["THB"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["THB"])
+			}
+		case "Czech koruna":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["CZK"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["CZK"])
+			}
+		case "Egyptian pound":
+			if elem.BoxOffice.Value.Valid {
+				revenue = t.Quo(elem.BoxOffice.Value.Decimal.BigFloat(), rates["EGP"])
+			}
+
+			if elem.Cost.Value.Valid {
+				cost = t.Quo(elem.Cost.Value.Decimal.BigFloat(), rates["EGP"])
 			}
 		}
 
-		idStr := strings.ReplaceAll(elem.ImdbId.Value, "tt", "")
+		idStr := strings.Replace(elem.ImdbId.Value, "tt", "", 1)
 
 		idInt, err := strconv.Atoi(idStr)
 		if err != nil {
-			log.Error(err)
+			continue
 		}
 
 		result, err := collection.UpdateOne(
@@ -124,11 +221,13 @@ func addWithImdbID(data listOfFileData) {
 			})
 
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 
 		numChanged += int(result.ModifiedCount)
 	}
+
+	fmt.Println(numChanged)
 }
 
 func connectToMongo() *mongo.Client {
