@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"sync"
 	"time"
 )
 
@@ -412,7 +413,9 @@ func readTitleTable() []title {
 	return titleList
 }
 
-func addMovies() {
+func addMovies(wg *sync.WaitGroup) {
+
+	defer wg.Done()
 
 	titles := readTitleTable()
 	fmt.Println("Got Titles")
@@ -448,7 +451,9 @@ func addMovies() {
 	}
 }
 
-func getNamesMap() {
+func getNamesMap(wg *sync.WaitGroup) {
+
+	defer wg.Done()
 
 	client := connectToMongo()
 
@@ -534,8 +539,14 @@ func main() {
 
 	start := time.Now()
 
-	getNamesMap()
-	addMovies()
+	wg := new(sync.WaitGroup)
+
+	wg.Add(2)
+
+	go getNamesMap(wg)
+	go addMovies(wg)
+
+	wg.Wait()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
