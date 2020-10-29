@@ -103,6 +103,8 @@ func updateTable(data listOfFileData, hasID bool) {
 
 	numChanged := 0
 
+	//titles := mapset.NewSet()
+
 	for _, elem := range data.Data {
 
 		// Convert money to us dollars
@@ -224,7 +226,7 @@ func updateTable(data listOfFileData, hasID bool) {
 				continue
 			}
 
-			result, err = collection.UpdateOne(
+			result, err = collection.UpdateMany(
 				context.Background(),
 				bson.M{"_id": idInt},
 				bson.D{
@@ -239,7 +241,9 @@ func updateTable(data listOfFileData, hasID bool) {
 			}
 		} else {
 
-			result, err = collection.UpdateOne(
+			//titles.Add(elem.Title.Value)
+
+			result, err = collection.UpdateMany(
 				context.Background(),
 				bson.M{"title": elem.Title.Value},
 				bson.D{
@@ -290,7 +294,7 @@ func main() {
 
 	data := readInJSON()
 
-	//updateTable(data, true)
+	updateTable(data, true)
 	updateTable(data, false)
 
 	t := time.Now()
