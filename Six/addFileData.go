@@ -89,7 +89,7 @@ func readInJSON() listOfFileData {
 	return dataList
 }
 
-func addWithImdbID(data listOfFileData) {
+func updateTable(data listOfFileData, hasID bool) {
 
 	ex := exchange.New("USD")
 	rates, err := ex.LatestRatesAll()
@@ -202,13 +202,6 @@ func addWithImdbID(data listOfFileData) {
 			}
 		}
 
-		idStr := strings.Replace(elem.ImdbId.Value, "tt", "", 1)
-
-		idInt, err := strconv.Atoi(idStr)
-		if err != nil {
-			continue
-		}
-
 		rating := "No Rating"
 
 		if elem.Rating.Value != "" {
@@ -221,24 +214,54 @@ func addWithImdbID(data listOfFileData) {
 			distributor = elem.DistributorLabel.Value
 		}
 
-		result, err := collection.UpdateOne(
-			context.Background(),
-			bson.M{"_id": idInt},
-			bson.D{
-				{"$set", bson.D{{"distributor", distributor},
-					{"rating", rating},
-					{"revenue", revenue},
-					{"cost", cost}}},
-			})
+		var result *mongo.UpdateResult
 
-		if err != nil {
-			log.Error(err)
+		if hasID {
+			idStr := strings.Replace(elem.ImdbId.Value, "tt", "", 1)
+
+			idInt, err := strconv.Atoi(idStr)
+			if err != nil {
+				continue
+			}
+
+			result, err = collection.UpdateOne(
+				context.Background(),
+				bson.M{"_id": idInt},
+				bson.D{
+					{"$set", bson.D{{"distributor", distributor},
+						{"rating", rating},
+						{"revenue", revenue},
+						{"cost", cost}}},
+				})
+
+			if err != nil {
+				log.Error(err)
+			}
+		} else {
+
+			result, err = collection.UpdateOne(
+				context.Background(),
+				bson.M{"title": elem.Title.Value},
+				bson.D{
+					{"$set", bson.D{{"distributor", distributor},
+						{"rating", rating},
+						{"revenue", revenue},
+						{"cost", cost}}},
+				})
+
+			if err != nil {
+				log.Error(err)
+			}
 		}
 
 		numChanged += int(result.ModifiedCount)
 	}
 
-	fmt.Println(numChanged)
+	if hasID {
+		fmt.Println("Using IMDB ID: " + strconv.Itoa(numChanged))
+	} else {
+		fmt.Println("Using Title: " + strconv.Itoa(numChanged))
+	}
 }
 
 func connectToMongo() *mongo.Client {
@@ -267,7 +290,8 @@ func main() {
 
 	data := readInJSON()
 
-	addWithImdbID(data)
+	//updateTable(data, true)
+	updateTable(data, false)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
