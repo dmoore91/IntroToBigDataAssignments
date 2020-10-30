@@ -363,7 +363,7 @@ func readTitleTable() []title {
 
 		var db dbTitle
 
-		err = rows.Scan(&db.Id, &db.TitleType, &db.TitleType, &db.OriginalTitle, &db.StartYear, &db.EndYear, &db.RuntimeMinutes,
+		err = rows.Scan(&db.Id, &db.TitleType, &db.Title, &db.OriginalTitle, &db.StartYear, &db.EndYear, &db.RuntimeMinutes,
 			&db.AvgRating, &db.NumVotes)
 		if err != nil {
 			log.Fatal(err)
@@ -380,7 +380,11 @@ func readTitleTable() []title {
 		}
 
 		if db.Title.Valid {
-			t.Title = db.Title.String
+			if db.Title.String != "" {
+				t.Title = db.Title.String
+			} else {
+				t.Title = db.OriginalTitle.String
+			}
 		}
 
 		if db.OriginalTitle.Valid {
