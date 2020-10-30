@@ -49,7 +49,7 @@ type listOfFileDataAnalyze struct {
 	Data []fileDataAnalyze
 }
 
-func readInJSONAnalyze() listOfFileDataAnalyze {
+func readInJSONAnalyze() mapset.Set {
 
 	// read file
 	file, err := os.Open("Six/extra-data.json")
@@ -58,7 +58,9 @@ func readInJSONAnalyze() listOfFileDataAnalyze {
 	}
 	defer file.Close()
 
-	var dataList listOfFileDataAnalyze
+	titles := mapset.NewSet()
+
+	numTitles := 0
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -72,21 +74,26 @@ func readInJSONAnalyze() listOfFileDataAnalyze {
 			log.Fatal(err)
 		}
 
-		dataList.Data = append(dataList.Data, f)
+		if f.Title.Value != "" {
+			titles.Add(f.Title.Value)
+			numTitles += 1
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 
-	return dataList
+	fmt.Println("Number of total titles in extra-data.json " + strconv.Itoa(numTitles))
+
+	return titles
 }
 
-func findMatchingTitles(numTitlesFound *uint32, numRoutinesFinished *uint32, wg *sync.WaitGroup, elem fileDataAnalyze, collection *mongo.Collection) {
+func findMatchingTitles(numTitlesFound *uint32, wg *sync.WaitGroup, title string, collection *mongo.Collection) {
 	defer wg.Done()
 
 	// update
-	filter := bson.D{{"title", elem.Title.Value}}
+	filter := bson.D{{"originalTitle", title}}
 
 	res, err := collection.Find(context.Background(), filter)
 
@@ -103,54 +110,27 @@ func findMatchingTitles(numTitlesFound *uint32, numRoutinesFinished *uint32, wg 
 	if err != nil {
 		log.Error(err)
 	}
-
-	atomic.AddUint32(numRoutinesFinished, 1)
-
-	//fmt.Println(*numRoutinesFinished)
 }
 
-func findUniqueTitlesAndNumMatchingInDb(data listOfFileDataAnalyze) {
+func findUniqueTitlesAndNumMatchingInDb(titles mapset.Set) {
 
 	client := connectToMongoAnalyze()
 
 	collection := client.Database("assignment_six").Collection("Movies")
 
-	titles := mapset.NewSet()
-
 	var numTitlesFound uint32 = 0
-	var numRoutinesFinished uint32 = 0
 
 	var wg sync.WaitGroup
 
-	numRoutines := 8500
+	wg.Add(titles.Cardinality())
 
-	for start := 0; start < len(data.Data); start += numRoutines {
-
-		end := start + numRoutines
-
-		if end > len(data.Data) {
-			end = len(data.Data)
-		}
-
-		//Need to make this dynamic to account for last iteration which probably isn't evenly divisible by numRoutines
-		wg.Add(end - start)
-
-		//Spawn off a lot of goroutines in an attempt to make this a faster process
-		for _, elem := range data.Data[start:end] {
-
-			titles.Add(elem.Title.Value)
-
-			go findMatchingTitles(&numTitlesFound, &numRoutinesFinished, &wg, elem, collection)
-		}
-
-		wg.Wait()
-
-		//Keep track of where we are
-		fmt.Println(end)
+	for _, title := range titles.ToSlice() {
+		go findMatchingTitles(&numTitlesFound, &wg, title.(string), collection)
 	}
 
+	wg.Wait()
+
 	fmt.Println("Number of Unique Titles in extra-data.json " + strconv.Itoa(titles.Cardinality()))
-	fmt.Println("Number of Total Titles in extra-data.json " + strconv.Itoa(len(data.Data)))
 	fmt.Println("Number of matching documents found " + strconv.Itoa(int(numTitlesFound)))
 }
 
@@ -178,9 +158,9 @@ func main() {
 
 	start := time.Now()
 
-	data := readInJSONAnalyze()
+	titles := readInJSONAnalyze()
 
-	findUniqueTitlesAndNumMatchingInDb(data)
+	findUniqueTitlesAndNumMatchingInDb(titles)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
