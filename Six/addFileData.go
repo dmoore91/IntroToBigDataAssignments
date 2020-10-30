@@ -89,7 +89,7 @@ func readInJSON() listOfFileData {
 	return dataList
 }
 
-func updateTable(data listOfFileData, hasID bool) {
+func updateTable(data listOfFileData) {
 
 	ex := exchange.New("USD")
 	rates, err := ex.LatestRatesAll()
@@ -101,9 +101,7 @@ func updateTable(data listOfFileData, hasID bool) {
 
 	collection := client.Database("assignment_six").Collection("Movies")
 
-	numChanged := 0
-
-	//titles := mapset.NewSet()
+	var operations []mongo.WriteModel
 
 	for _, elem := range data.Data {
 
@@ -216,56 +214,34 @@ func updateTable(data listOfFileData, hasID bool) {
 			distributor = elem.DistributorLabel.Value
 		}
 
-		var result *mongo.UpdateResult
+		idStr := strings.Replace(elem.ImdbId.Value, "tt", "", 1)
 
-		if hasID {
-			idStr := strings.Replace(elem.ImdbId.Value, "tt", "", 1)
-
-			idInt, err := strconv.Atoi(idStr)
-			if err != nil {
-				continue
-			}
-
-			result, err = collection.UpdateMany(
-				context.Background(),
-				bson.M{"_id": idInt},
-				bson.D{
-					{"$set", bson.D{{"distributor", distributor},
-						{"rating", rating},
-						{"revenue", revenue},
-						{"cost", cost}}},
-				})
-
-			if err != nil {
-				log.Error(err)
-			}
-		} else {
-
-			//titles.Add(elem.Title.Value)
-
-			result, err = collection.UpdateMany(
-				context.Background(),
-				bson.M{"title": elem.Title.Value},
-				bson.D{
-					{"$set", bson.D{{"distributor", distributor},
-						{"rating", rating},
-						{"revenue", revenue},
-						{"cost", cost}}},
-				})
-
-			if err != nil {
-				log.Error(err)
-			}
+		idInt, err := strconv.Atoi(idStr)
+		if err != nil {
+			continue
 		}
 
-		numChanged += int(result.ModifiedCount)
+		updateOP := mongo.NewUpdateManyModel()
+		updateOP.SetFilter(bson.M{"_id": idInt})
+		updateOP.SetUpdate(bson.M{"$set": bson.M{"distributor": distributor,
+			"rating":  rating,
+			"revenue": revenue,
+			"cost":    cost}})
+		updateOP.SetUpsert(false)
+		operations = append(operations, updateOP)
 	}
 
-	if hasID {
-		fmt.Println("Using IMDB ID: " + strconv.Itoa(numChanged))
-	} else {
-		fmt.Println("Using Title: " + strconv.Itoa(numChanged))
+	// Specify an option to turn the bulk insertion in order of operation
+	bulkOption := options.BulkWriteOptions{}
+	bulkOption.SetOrdered(true)
+
+	result, err := collection.BulkWrite(context.TODO(), operations, &bulkOption)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	fmt.Println("Using IMDB ID: " + strconv.Itoa(int(result.ModifiedCount)))
+
 }
 
 func connectToMongo() *mongo.Client {
@@ -294,8 +270,7 @@ func main() {
 
 	data := readInJSON()
 
-	updateTable(data, true)
-	updateTable(data, false)
+	updateTable(data)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
