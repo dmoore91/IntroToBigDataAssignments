@@ -31,7 +31,7 @@ func connectToMongoIndex() *mongo.Client {
 func createTitleIndex() {
 	mod := mongo.IndexModel{
 		Keys: bson.M{
-			"title": 1, // index in descending order
+			"originalTitle": 1, // index in descending order
 		}, Options: nil,
 	}
 
