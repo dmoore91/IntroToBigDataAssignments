@@ -93,7 +93,7 @@ func findMatchingTitles(numTitlesFound *uint32, wg *sync.WaitGroup, title string
 	defer wg.Done()
 
 	// update
-	filter := bson.D{{"originalTitle", title}}
+	filter := bson.D{{"title", title}}
 
 	res, err := collection.Find(context.Background(), filter)
 
