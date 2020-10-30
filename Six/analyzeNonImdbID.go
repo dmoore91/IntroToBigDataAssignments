@@ -106,7 +106,7 @@ func findMatchingTitles(numTitlesFound *uint32, numRoutinesFinished *uint32, wg 
 
 	atomic.AddUint32(numRoutinesFinished, 1)
 
-	fmt.Println(*numRoutinesFinished)
+	//fmt.Println(*numRoutinesFinished)
 }
 
 func findUniqueTitlesAndNumMatchingInDb(data listOfFileDataAnalyze) {
@@ -117,27 +117,41 @@ func findUniqueTitlesAndNumMatchingInDb(data listOfFileDataAnalyze) {
 
 	titles := mapset.NewSet()
 
-	numTitles := 0
-
 	var numTitlesFound uint32 = 0
 	var numRoutinesFinished uint32 = 0
 
 	var wg sync.WaitGroup
-	wg.Add(len(data.Data))
 
-	//Spawn off a lot of goroutines in an attempt to make this a faster process
-	for _, elem := range data.Data {
+	numRoutines := 8500
 
-		titles.Add(elem.Title.Value)
+	for start := 0; start < len(data.Data); start += numRoutines {
 
-		go findMatchingTitles(&numTitlesFound, &numRoutinesFinished, &wg, elem, collection)
+		end := start + numRoutines
+
+		if end > len(data.Data) {
+			end = len(data.Data)
+		}
+
+		//Need to make this dynamic to account for last iteration which probably isn't evenly divisible by numRoutines
+		wg.Add(end - start)
+
+		//Spawn off a lot of goroutines in an attempt to make this a faster process
+		for _, elem := range data.Data[start:end] {
+
+			titles.Add(elem.Title.Value)
+
+			go findMatchingTitles(&numTitlesFound, &numRoutinesFinished, &wg, elem, collection)
+		}
+
+		wg.Wait()
+
+		//Keep track of where we are
+		fmt.Println(end)
 	}
 
-	wg.Wait()
-
 	fmt.Println("Number of Unique Titles in extra-data.json " + strconv.Itoa(titles.Cardinality()))
-	fmt.Println("Number of Total Titles in extra-data.json " + strconv.Itoa(numTitles))
-	fmt.Println("Number of matching documents found " + strconv.Itoa(len(data.Data)))
+	fmt.Println("Number of Total Titles in extra-data.json " + strconv.Itoa(len(data.Data)))
+	fmt.Println("Number of matching documents found " + strconv.Itoa(int(numTitlesFound)))
 }
 
 func connectToMongoAnalyze() *mongo.Client {
