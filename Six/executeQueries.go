@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
+	"github.com/wcharczuk/go-chart"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
+	"os"
 	"time"
 )
 
@@ -35,7 +37,6 @@ func connectToMongoQuery() *mongo.Client {
 	return client
 }
 
-//Works
 func averageRatingOfGenres() {
 
 	client := connectToMongoQuery()
@@ -110,7 +111,88 @@ func averageRatingOfGenres() {
 
 }
 
+func averageNumberOfActorsForGenres() {
+
+	client := connectToMongoQuery()
+
+	start := time.Now()
+
+	filterOutNoActors := bson.D{{"$match", bson.D{{"actors.actors",
+		bson.D{{"$ne", nil}}}}}}
+	unwindGenresStage := bson.D{{"$unwind", "$genres"}}
+	groupByGenreStage := bson.D{{"$group", bson.D{{"_id",
+		bson.D{{"genre", "$genres"}}},
+		{"averageNumberOfActors", bson.D{{"$avg", bson.D{{"$size", "$actors.actors"}}}}}}}}
+	showInfoCursor, err := client.Database("assignment_six").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{filterOutNoActors, unwindGenresStage, groupByGenreStage})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	var barList []chart.Value
+
+	for showInfoCursor.Next(context.Background()) {
+
+		var result map[string]interface{}
+		err = json.Unmarshal([]byte(showInfoCursor.Current.String()), &result)
+		if err != nil {
+			log.Error(err)
+		}
+
+		idMap := result["_id"].(map[string]interface{})
+		genre := idMap["genre"].(string)
+
+		avgActorMap := result["averageNumberOfActors"].(map[string]interface{})
+		numActors := avgActorMap["$numberDouble"].(string)
+
+		avgRatingDecimal, err := decimal.NewFromString(numActors)
+		if err != nil {
+			log.Error(err)
+		}
+
+		tmp, _ := avgRatingDecimal.Float64()
+
+		barList = append(barList, chart.Value{
+			Label: genre,
+			Value: tmp,
+		})
+	}
+
+	graph := chart.BarChart{
+		Title: "Average Number Of Actors",
+		Background: chart.Style{
+			Padding: chart.Box{
+				Top: 40,
+			},
+		},
+		Width:    3000,
+		BarWidth: 250,
+		Bars:     barList,
+	}
+
+	f, _ := os.Create("Six/numActors.png")
+
+	defer f.Close()
+	err = graph.Render(chart.PNG, f)
+	if err != nil {
+		log.Error(err)
+	}
+
+	err = showInfoCursor.Close(context.Background())
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
+
+}
+
 func main() {
-	averageRatingOfGenres()
+	//averageRatingOfGenres()
+	averageNumberOfActorsForGenres()
 
 }
