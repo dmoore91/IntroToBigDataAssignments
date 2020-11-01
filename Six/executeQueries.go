@@ -14,6 +14,7 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -191,8 +192,92 @@ func averageNumberOfActorsForGenres() {
 
 }
 
+func numberOfMoviesPerYear() {
+
+	client := connectToMongoQuery()
+
+	start := time.Now()
+
+	filterOutYear0 := bson.D{{"$match", bson.D{{"startYear",
+		bson.D{{"$ne", 0}}}}}}
+	groupByStartYearStage := bson.D{{"$group", bson.D{{"_id",
+		bson.D{{"startYear", "$startYear"}}},
+		{"numMovies", bson.D{{"$sum", 1}}}}}}
+	sortByStartYearAscending := bson.D{{"$sort", bson.D{{"_id.startYear", 1}}}}
+
+	tr := true
+
+	opts := options.AggregateOptions{AllowDiskUse: &tr}
+
+	showInfoCursor, err := client.Database("assignment_six").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{filterOutYear0, groupByStartYearStage, sortByStartYearAscending}, &opts)
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	var times []time.Time
+	var data []float64
+
+	for showInfoCursor.Next(context.Background()) {
+
+		fmt.Println(showInfoCursor.Current)
+
+		var result map[string]interface{}
+		err = json.Unmarshal([]byte(showInfoCursor.Current.String()), &result)
+		if err != nil {
+			log.Error(err)
+		}
+
+		idMap := result["_id"].(map[string]interface{})
+		startYearMap := idMap["startYear"].(map[string]interface{})
+		startYear := startYearMap["$numberInt"].(string)
+
+		startYearInt, err := strconv.Atoi(startYear)
+		if err != nil {
+			log.Error(err)
+		}
+
+		times = append(times, time.Date(startYearInt, time.January, 1, 0, 0, 0, 0, time.UTC))
+
+		numMoviesMap := result["numMovies"].(map[string]interface{})
+		numMovies := numMoviesMap["$numberInt"].(string)
+
+		numMoviesFloat, err := strconv.ParseFloat(numMovies, 32)
+		data = append(data, numMoviesFloat)
+	}
+
+	graph := chart.Chart{
+		Series: []chart.Series{
+			chart.TimeSeries{
+				XValues: times,
+				YValues: data,
+			},
+		},
+	}
+
+	f, _ := os.Create("Six/numMovies.png")
+	defer f.Close()
+
+	err = graph.Render(chart.PNG, f)
+	if err != nil {
+		log.Error(err)
+	}
+
+	err = showInfoCursor.Close(context.Background())
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	t := time.Now()
+	elapsed := t.Sub(start)
+	fmt.Println("It took  " + elapsed.String() + " to run this query")
+
+}
+
 func main() {
 	//averageRatingOfGenres()
-	averageNumberOfActorsForGenres()
-
+	//averageNumberOfActorsForGenres()
+	numberOfMoviesPerYear()
 }
