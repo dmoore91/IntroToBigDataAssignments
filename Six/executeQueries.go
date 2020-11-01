@@ -93,7 +93,7 @@ func averageRatingOfGenres() {
 		}
 		p.Add(box)
 
-		if err := p.Save(8.5*vg.Inch, 11*vg.Inch, "Six/"+genre+"_box.png"); err != nil {
+		if err := p.Save(8.5*vg.Inch, 11*vg.Inch, "Six/"+genre+"_box.jpg"); err != nil {
 			panic(err)
 		}
 	}
