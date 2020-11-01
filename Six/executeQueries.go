@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-echarts/go-echarts/charts"
-	"github.com/go-echarts/go-echarts/opts"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"os"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
 	"time"
 )
 
@@ -47,28 +47,15 @@ func averageRatingOfGenres() {
 		bson.D{{"$ne", ""}}}}}}
 	filterOutTooLittleVotes := bson.D{{"$match", bson.D{{"numVotes",
 		bson.D{{"$gt", 10000}}}}}}
-	groupByGenreStage := bson.D{{"$group", bson.D{{"_id",
-		bson.D{{"genre", "$genres"}}},
-		{"averageRating", bson.D{{"$avg", bson.D{{"$toDecimal", "$avgRating"}}}}}}}}
 
 	showInfoCursor, err := client.Database("assignment_six").Collection("Movies").Aggregate(context.Background(),
-		mongo.Pipeline{unwindGenresStage, filterOutEmptyRatings, filterOutTooLittleVotes, groupByGenreStage})
+		mongo.Pipeline{unwindGenresStage, filterOutEmptyRatings, filterOutTooLittleVotes})
 
 	if err != nil {
 		log.Error(err)
 	}
 
-	bar := charts.NewBar()
-
-	// set some global options like Title/Legend/ToolTip or anything else
-	bar.SetGlobalOptions(
-		charts.WithTitleOpts(opts.Title{
-			Title: "Average Rating for genres",
-		}),
-	)
-
-	var genres []string
-	var data []opts.BarData
+	genreMap := make(map[string]plotter.Values)
 
 	for showInfoCursor.Next(context.Background()) {
 
@@ -78,36 +65,37 @@ func averageRatingOfGenres() {
 			log.Error(err)
 		}
 
-		genreMap := result["_id"].(map[string]interface{})
-		genre := genreMap["genre"].(string)
+		genre := result["genres"].(string)
 
-		genres = append(genres, genre)
-
-		avgRatingMap := result["averageRating"].(map[string]interface{})
-		avgRating := avgRatingMap["$numberDecimal"].(string)
+		avgRating := result["avgRating"].(string)
 
 		avgRatingDecimal, err := decimal.NewFromString(avgRating)
 		if err != nil {
 			log.Error(err)
 		}
 
-		data = append(data, opts.BarData{Value: avgRatingDecimal})
+		tmp, _ := avgRatingDecimal.Float64()
+
+		genreMap[genre] = append(genreMap[genre], tmp)
 	}
 
-	// Put some data in instance
-	bar.SetXAxis(genres).
-		AddSeries("Category A", data)
+	for genre, data := range genreMap {
 
-	// iowriter
-	f, err := os.Create("bar.html")
-	if err != nil {
-		log.Error(err)
-	}
+		p, err := plot.New()
+		if err != nil {
+			panic(err)
+		}
+		p.Title.Text = genre
 
-	// Where the magic happens
-	err = bar.Render(f)
-	if err != nil {
-		log.Error(err)
+		box, err := plotter.NewBoxPlot(vg.Length(15), 0.0, data)
+		if err != nil {
+			log.Error(err)
+		}
+		p.Add(box)
+
+		if err := p.Save(8.5*vg.Inch, 11*vg.Inch, "Six/"+genre+"_box.png"); err != nil {
+			panic(err)
+		}
 	}
 
 	err = showInfoCursor.Close(context.Background())
