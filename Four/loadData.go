@@ -23,20 +23,20 @@ type actorList struct {
 }
 
 type title struct {
-	Id             int             `bson:"_id" json:"_id"`
-	TitleType      string          `bson:"type" json:"type"`
-	Title          string          `bson:"title" json:"title"`
-	OriginalTitle  string          `bson:"originalTitle" json:"originalTitle"`
-	StartYear      int             `bson:"startYear" json:"startYear"`
-	EndYear        int             `bson:"endYear" json:"actor"`
-	RuntimeMinutes int             `bson:"runtime" json:"runtime"`
-	AvgRating      decimal.Decimal `bson:"avgRating" json:"avgRating"`
-	NumVotes       int             `bson:"numVotes" json:"numVotes"`
-	Genres         []string        `bson:"genres" json:"genres"`
-	Actors         actorList       `bson:"actors" json:"actors"`
-	Directors      []int           `bson:"directors" json:"directors"`
-	Writers        []int           `bson:"writers" json:"writers"`
-	Producers      []int           `bson:"producers" json:"producers"`
+	Id             int       `bson:"_id" json:"_id"`
+	TitleType      string    `bson:"type" json:"type"`
+	Title          string    `bson:"title" json:"title"`
+	OriginalTitle  string    `bson:"originalTitle" json:"originalTitle"`
+	StartYear      int       `bson:"startYear" json:"startYear"`
+	EndYear        int       `bson:"endYear" json:"actor"`
+	RuntimeMinutes int       `bson:"runtime" json:"runtime"`
+	AvgRating      string    `bson:"avgRating" json:"avgRating"`
+	NumVotes       int       `bson:"numVotes" json:"numVotes"`
+	Genres         []string  `bson:"genres" json:"genres"`
+	Actors         actorList `bson:"actors" json:"actors"`
+	Directors      []int     `bson:"directors" json:"directors"`
+	Writers        []int     `bson:"writers" json:"writers"`
+	Producers      []int     `bson:"producers" json:"producers"`
 }
 
 type dbTitle struct {
@@ -404,7 +404,7 @@ func readTitleTable() []title {
 		}
 
 		if db.AvgRating.Valid {
-			t.AvgRating = db.AvgRating.Decimal
+			t.AvgRating = db.AvgRating.Decimal.String()
 		}
 
 		if db.NumVotes.Valid {
