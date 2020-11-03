@@ -33,3 +33,7 @@ This repo is used to hold all my assignments for my Intro To Big Data course. I 
 	* Implemented queries via global views, ran and timed them
 	* Optimized queries by going to previous sources and removing redundant joins and sources. Ran and timed these as well.
 		* Longest query dropped from 1:03 to 26 seconds. Not a lot time wise but about 50% percentage wise
+* Six
+	* Read in data from provided JSON. Has to restructure a little bit because IDs in JSON are the IMDB id so I had to rework my IDs a bit to make sure that I could derive them from the IMDB ids and make it all fit together
+	* Wrote optimized Go code that uses Goroutines to use up all potential processor power in order to show that using titles, which is the only other reasonably unique field, we can only get about 13000 unique documents out of several hundered thousand.
+	* Wrote MongoDB queries using aggregation pipeline, then used the gonum plotter to plot a bar chart, box and whisker plot and time series graph as requested.
