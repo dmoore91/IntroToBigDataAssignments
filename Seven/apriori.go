@@ -19,7 +19,7 @@ func createL1() {
 	}
 
 	queryString := "CREATE TABLE L1 AS " +
-		"(SELECT actor, COUNT(actor) " +
+		"(SELECT actor as actor1, COUNT(actor) " +
 		"FROM Popular_Movie_Actors " +
 		"GROUP BY actor	" +
 		"HAVING COUNT(actor) >= 5)"
@@ -49,12 +49,12 @@ func createL2() {
 
 	queryString :=
 		"CREATE TABLE L2 AS " +
-			"(SELECT L1.actor as actor1, tmp.actor as actor2, COUNT(*) " +
+			"(SELECT L1.actor1 as actor1, tmp.actor1 as actor2, COUNT(*) " +
 			"FROM L1 CROSS JOIN L1 as tmp " +
 			"INNER JOIN (SELECT a.actor as actorA, b.actor as actorB FROM Popular_Movie_Actors as a, Popular_Movie_Actors as b WHERE a.title = b.title AND a.actor != b.actor) as a ON " +
-			"(a.actorA = L1.actor AND a.actorB = tmp.actor) " +
-			"WHERE L1.actor < tmp.actor " +
-			"GROUP BY L1.actor, tmp.actor " +
+			"(a.actorA = L1.actor1 AND a.actorB = tmp.actor1) " +
+			"WHERE L1.actor1 < tmp.actor1 " +
+			"GROUP BY L1.actor1, tmp.actor1 " +
 			"HAVING COUNT(*) >= 5)"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
@@ -259,6 +259,71 @@ func createL3() {
 	}
 }
 
+func getQueryStringForPreviousLattice(lattice int) string {
+
+	queryString := "SELECT "
+
+	for i := 1; i <= lattice; i++ {
+		queryString += "actor"
+		queryString += strconv.Itoa(i)
+		queryString += " "
+	}
+
+	queryString += "FROM L"
+	queryString += strconv.Itoa(lattice)
+
+	return queryString
+}
+
+func genericLatticeGeneration() {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_seven")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	i := 2
+
+	// Don't actually want infinite loop, we just don't know when it'll finish
+	for {
+
+		queryString := getQueryStringForPreviousLattice(i - 1)
+
+		fmt.Println(queryString)
+
+		rows, err := conn.Query(context.Background(), queryString)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		//var l2SetList []mapset.Set
+
+		// Each row becomes a set
+		// Union with other row
+		// If union is size 3 (... or whatever size we want), then keep
+
+		for rows.Next() {
+			var actors []int
+			err = rows.Scan(&actors)
+
+			if err != nil {
+				log.Error(err)
+			}
+
+			//tmpSet := mapset.NewSet()
+			//tmpSet.Add(actor1)
+			//tmpSet.Add(actor2)
+			//
+			//l2SetList = append(l2SetList, tmpSet)
+		}
+
+		rows.Close()
+		break
+
+	}
+}
+
 // Minimum support is 5
 // Therefore we must only keep entries with a count >=5 for
 // all tables
@@ -267,7 +332,9 @@ func main() {
 
 	//createL1()
 	//createL2()
-	createL3()
+	//createL3()
+
+	genericLatticeGeneration()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
