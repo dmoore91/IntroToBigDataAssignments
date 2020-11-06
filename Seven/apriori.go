@@ -77,8 +77,12 @@ func createL3() {
 
 	queryString :=
 		"CREATE TABLE L3 AS " +
-			"(SELECT p.actor1 as actor1, tmp.actor1 as actor2, COUNT(*) " +
-			"FROM L2 p, L2 q, Popular_Movie_Actor a, Popular_Movie_Actor as b "
+			"(SELECT p.actor1 as actor1, p.actor2 as actor2, q.actor2 as actor3, COUNT(*) as count " +
+			"FROM L2 p, L2 q, Popular_Movie_Actors a, Popular_Movie_Actors b, Popular_Movie_Actors c " +
+			"WHERE p.actor1 = q.actor1 AND p.actor2 < q.actor2 AND a.actor = p.actor1 AND b.actor = p.actor2 " +
+			"AND c.actor = q.actor2 AND a.title = b.title AND b.title = c.title " +
+			"GROUP BY p.actor1, p.actor2, q.actor2 " +
+			"HAVING COUNT(*) >= 5)"
 
 	commandTag, err := conn.Exec(context.Background(), queryString)
 
@@ -103,8 +107,8 @@ func main() {
 	start := time.Now()
 
 	//createL1()
-	createL2()
-	//createL3()
+	//createL2()
+	createL3()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
