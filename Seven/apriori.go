@@ -6,6 +6,8 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -110,6 +112,35 @@ func getActorToTitleSetMap(conn *pgx.Conn) map[int]mapset.Set {
 	return actorToTitleSet
 }
 
+func getBulkInsertSQL(SQLString string, rowValueSQL string, numRows int) string {
+	// Combine the base SQL string and N value strings
+	valueStrings := make([]string, 0, numRows)
+	for i := 0; i < numRows; i++ {
+		valueStrings = append(valueStrings, "("+rowValueSQL+")")
+	}
+	allValuesString := strings.Join(valueStrings, ",")
+	SQLString = fmt.Sprintf(SQLString, allValuesString)
+
+	// Convert all of the "?" to "$1", "$2", "$3", etc.
+	// (which is the way that pgx expects query variables to be)
+	numArgs := strings.Count(SQLString, "?")
+	SQLString = strings.ReplaceAll(SQLString, "?", "$%v")
+	numbers := make([]interface{}, 0, numRows)
+	for i := 1; i <= numArgs; i++ {
+		numbers = append(numbers, strconv.Itoa(i))
+	}
+	return fmt.Sprintf(SQLString, numbers...)
+}
+
+func getBulkInsertSQLSimple(SQLString string, numArgsPerRow int, numRows int) string {
+	questionMarks := make([]string, 0, numArgsPerRow)
+	for i := 0; i < numArgsPerRow; i++ {
+		questionMarks = append(questionMarks, "?")
+	}
+	rowValueSQL := strings.Join(questionMarks, ", ")
+	return getBulkInsertSQL(SQLString, rowValueSQL, numRows)
+}
+
 func createL3() {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_seven")
@@ -167,8 +198,65 @@ func createL3() {
 		}
 	}
 
-	fmt.Println(len(potentiallyFrequentSets))
+	actorToTitleSetMap := getActorToTitleSetMap(conn)
 
+	var frequentActors [][4]int
+
+	for _, set := range potentiallyFrequentSets {
+
+		var actors []int
+
+		it := set.Iterator()
+
+		for c := range it.C {
+			actors = append(actors, c.(int))
+		}
+
+		titles := actorToTitleSetMap[actors[0]]
+		titles = titles.Intersect(actorToTitleSetMap[actors[1]])
+		titles = titles.Intersect(actorToTitleSetMap[actors[2]])
+
+		if titles.Cardinality() >= 5 {
+			frequentActors = append(frequentActors, [4]int{actors[0], actors[1], actors[2], titles.Cardinality()})
+		}
+	}
+
+	sqlString := "INSERT INTO L3 (actor1, actor2, actor3, count) VALUES %s"
+
+	numArgsPerRow := 4
+	valueArgs := make([]interface{}, 0, numArgsPerRow*len(frequentActors))
+	for _, elem := range frequentActors {
+		valueArgs = append(valueArgs, elem[0], elem[1], elem[2], elem[3])
+	}
+
+	sqlString = getBulkInsertSQLSimple(sqlString, numArgsPerRow, len(frequentActors))
+
+	queryString = "CREATE TABLE L3( " +
+		" actor1 INTEGER, " +
+		" actor2 INTEGER, " +
+		" actor3 INTEGER, " +
+		" count INTEGER)"
+
+	_, err = conn.Exec(context.Background(), queryString)
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	commandTag, err := conn.Exec(context.Background(), sqlString, valueArgs...)
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		log.Error(err)
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 // Minimum support is 5
