@@ -71,39 +71,6 @@ func createL2() {
 	}
 }
 
-func combinationsOf3(set []int, conn *pgx.Conn) mapset.Set {
-
-	length := len(set)
-
-	coms := mapset.NewSet()
-
-	actorToTitleSet := getActorToTitleSetMap(conn)
-
-	for i := 0; i < length; i++ {
-		for j := 0; j < length; j++ {
-			for k := 0; k < length; k++ {
-
-				titles := actorToTitleSet[set[i]]
-				titles = titles.Intersect(actorToTitleSet[set[j]])
-				titles = titles.Intersect(actorToTitleSet[set[k]])
-
-				if titles.Cardinality() >= 5 {
-
-					tmp := mapset.NewSet()
-					tmp.Add(set[i])
-					tmp.Add(set[j])
-					tmp.Add(set[k])
-
-					coms.Add(tmp)
-				}
-			}
-		}
-		fmt.Println(coms.Cardinality())
-	}
-
-	return coms
-}
-
 func getActorToTitleSetMap(conn *pgx.Conn) map[int]mapset.Set {
 
 	queryString := "SELECT actor, title FROM Popular_Movie_Actors"
@@ -162,9 +129,13 @@ func createL3() {
 
 	defer rows.Close()
 
-	uniqueActors := mapset.NewSet()
+	var l2SetList []mapset.Set
 
 	defer rows.Close()
+
+	// Each row becomes a set
+	// Union with other row
+	// If union is size 3 (... or whatever size we want), then keep
 
 	for rows.Next() {
 		var actor1 int
@@ -175,84 +146,29 @@ func createL3() {
 			log.Error(err)
 		}
 
-		uniqueActors.Add(actor1)
-		uniqueActors.Add(actor2)
+		tmpSet := mapset.NewSet()
+		tmpSet.Add(actor1)
+		tmpSet.Add(actor2)
+
+		l2SetList = append(l2SetList, tmpSet)
 	}
 
-	var actors []int
+	var potentiallyFrequentSets []mapset.Set
 
-	it := uniqueActors.Iterator()
+	for i, a := range l2SetList {
+		for j, b := range l2SetList {
 
-	for actor := range it.C {
-		i := actor.(int)
-		actors = append(actors, i)
+			if i != j {
+				u := a.Union(b)
+				if u.Cardinality() == 3 {
+					potentiallyFrequentSets = append(potentiallyFrequentSets, u)
+				}
+			}
+		}
 	}
 
-	//Get all unique combinations of 3 actors
-	combos := combinationsOf3(actors, conn)
+	fmt.Println(len(potentiallyFrequentSets))
 
-	fmt.Println(len(actors))
-	fmt.Println(combos.Cardinality())
-
-	//valueStrings := make([]string, 0,combos.Cardinality())
-	//valueArgs := make([]interface{}, 0, combos.Cardinality() * 3)
-	//i := 0
-	//
-	//comboIt := combos.Iterator()
-	//
-	//for c := range comboIt.C{
-	//
-	//	tmp := c.(string)
-	//
-	//	parts := strings.Split(tmp, ",")
-	//
-	//	var arr [3]int
-	//
-	//	arr[0], _ = strconv.Atoi(parts[0])
-	//	arr[1], _ = strconv.Atoi(parts[1])
-	//	arr[2], _ = strconv.Atoi(parts[2])
-	//
-	//	titles := actorToTitleSet[arr[0]]
-	//	titles = titles.Intersect(actorToTitleSet[arr[1]])
-	//	titles = titles.Intersect(actorToTitleSet[arr[2]])
-	//
-	//	if titles.Cardinality() >= 5 {
-	//		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
-	//		valueArgs = append(valueArgs, arr[0])
-	//		valueArgs = append(valueArgs, arr[1])
-	//		valueArgs = append(valueArgs, arr[2])
-	//		valueArgs = append(valueArgs, titles.Cardinality())
-	//		i++
-	//	}
-	//}
-
-	//fmt.Println("There are " + strconv.Itoa(i) + " frequent itemsets of size 3")
-	//
-	//queryString = "CREATE TABLE L3"
-	//
-	//_, err = conn.Exec(context.Background(), queryString)
-	//
-	//if err != nil {
-	//	//Needs to be fatal because we will blow up the next chunk of code with errors if it isn't
-	//	log.Fatal(err)
-	//}
-	//
-	//stmt := fmt.Sprintf("INSERT INTO L3 (actor1, actor2, actor3, count) VALUES %s", strings.Join(valueStrings, ","))
-	//
-	//commandTag, err := conn.Exec(context.Background(), stmt, valueArgs...)
-
-	//if err != nil {
-	//	log.Error(err)
-	//}
-	//
-	//if commandTag.RowsAffected() == 0 {
-	//	log.Error(err)
-	//}
-
-	err = conn.Close(context.Background())
-	if err != nil {
-		log.Error(err)
-	}
 }
 
 // Minimum support is 5
