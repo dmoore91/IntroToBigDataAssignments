@@ -6,9 +6,6 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	"github.com/jackc/pgx"
 	log "github.com/sirupsen/logrus"
-	"math"
-	"math/bits"
-	"strconv"
 	"time"
 )
 
@@ -74,6 +71,78 @@ func createL2() {
 	}
 }
 
+func combinationsOf3(set []int, conn *pgx.Conn) mapset.Set {
+
+	length := len(set)
+
+	coms := mapset.NewSet()
+
+	actorToTitleSet := getActorToTitleSetMap(conn)
+
+	for i := 0; i < length; i++ {
+		for j := 0; j < length; j++ {
+			for k := 0; k < length; k++ {
+
+				titles := actorToTitleSet[set[i]]
+				titles = titles.Intersect(actorToTitleSet[set[j]])
+				titles = titles.Intersect(actorToTitleSet[set[k]])
+
+				if titles.Cardinality() >= 5 {
+
+					tmp := mapset.NewSet()
+					tmp.Add(set[i])
+					tmp.Add(set[j])
+					tmp.Add(set[k])
+
+					coms.Add(tmp)
+				}
+			}
+		}
+		fmt.Println(coms.Cardinality())
+	}
+
+	return coms
+}
+
+func getActorToTitleSetMap(conn *pgx.Conn) map[int]mapset.Set {
+
+	queryString := "SELECT actor, title FROM Popular_Movie_Actors"
+
+	rows, err := conn.Query(context.Background(), queryString)
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	defer rows.Close()
+
+	actorToTitleSet := make(map[int]mapset.Set)
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var actor int
+		var title int
+		err = rows.Scan(&actor, &title)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		_, ok := actorToTitleSet[actor]
+
+		if ok {
+			actorToTitleSet[actor].Add(title)
+		} else {
+			set := mapset.NewSet()
+			set.Add(title)
+			actorToTitleSet[actor] = set
+		}
+	}
+
+	return actorToTitleSet
+}
+
 func createL3() {
 
 	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_seven")
@@ -110,57 +179,80 @@ func createL3() {
 		uniqueActors.Add(actor2)
 	}
 
-	var actors []string
+	var actors []int
 
 	it := uniqueActors.Iterator()
 
 	for actor := range it.C {
 		i := actor.(int)
-		actors = append(actors, strconv.Itoa(i))
+		actors = append(actors, i)
 	}
 
-	combos := combinations(actors, 3)
+	//Get all unique combinations of 3 actors
+	combos := combinationsOf3(actors, conn)
 
-	fmt.Println(combos)
+	fmt.Println(len(actors))
+	fmt.Println(combos.Cardinality())
+
+	//valueStrings := make([]string, 0,combos.Cardinality())
+	//valueArgs := make([]interface{}, 0, combos.Cardinality() * 3)
+	//i := 0
+	//
+	//comboIt := combos.Iterator()
+	//
+	//for c := range comboIt.C{
+	//
+	//	tmp := c.(string)
+	//
+	//	parts := strings.Split(tmp, ",")
+	//
+	//	var arr [3]int
+	//
+	//	arr[0], _ = strconv.Atoi(parts[0])
+	//	arr[1], _ = strconv.Atoi(parts[1])
+	//	arr[2], _ = strconv.Atoi(parts[2])
+	//
+	//	titles := actorToTitleSet[arr[0]]
+	//	titles = titles.Intersect(actorToTitleSet[arr[1]])
+	//	titles = titles.Intersect(actorToTitleSet[arr[2]])
+	//
+	//	if titles.Cardinality() >= 5 {
+	//		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
+	//		valueArgs = append(valueArgs, arr[0])
+	//		valueArgs = append(valueArgs, arr[1])
+	//		valueArgs = append(valueArgs, arr[2])
+	//		valueArgs = append(valueArgs, titles.Cardinality())
+	//		i++
+	//	}
+	//}
+
+	//fmt.Println("There are " + strconv.Itoa(i) + " frequent itemsets of size 3")
+	//
+	//queryString = "CREATE TABLE L3"
+	//
+	//_, err = conn.Exec(context.Background(), queryString)
+	//
+	//if err != nil {
+	//	//Needs to be fatal because we will blow up the next chunk of code with errors if it isn't
+	//	log.Fatal(err)
+	//}
+	//
+	//stmt := fmt.Sprintf("INSERT INTO L3 (actor1, actor2, actor3, count) VALUES %s", strings.Join(valueStrings, ","))
+	//
+	//commandTag, err := conn.Exec(context.Background(), stmt, valueArgs...)
+
+	//if err != nil {
+	//	log.Error(err)
+	//}
+	//
+	//if commandTag.RowsAffected() == 0 {
+	//	log.Error(err)
+	//}
 
 	err = conn.Close(context.Background())
 	if err != nil {
 		log.Error(err)
 	}
-}
-
-func combinations(set []string, n int) (subsets [][]string) {
-
-	if n > len(set) {
-		n = len(set)
-	}
-
-	numCombs := int(math.Pow(float64(len(set)), 2.0))
-	length := len(set)
-
-	fmt.Println(length)
-
-	// Go through all possible combinations of objects
-	// from 1 (only first object in subset) to 2^length (all objects in subset)
-	for subsetBits := 1; subsetBits < numCombs; subsetBits += 1 {
-		if n > 0 && bits.OnesCount(uint(subsetBits)) != n {
-			continue
-		}
-
-		var subset []string
-
-		for object := 0; object < length; object++ {
-			// checks if object is contained in subset
-			// by checking if bit 'object' is set in subsetBits
-			if (subsetBits>>object)&1 == 1 {
-				// add object to subset
-				subset = append(subset, set[object])
-			}
-		}
-		// add subset to subsets
-		subsets = append(subsets, subset)
-	}
-	return subsets
 }
 
 // Minimum support is 5
