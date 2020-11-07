@@ -294,6 +294,56 @@ func generateAprioriLattices() {
 
 }
 
+func getMembers() {
+
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres@localhost:5432/assignment_seven")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	queryString := "SELECT a.name, b.name, c.name, d.name, e.name, f.name, g.name " +
+		"FROM L7 " +
+		"INNER JOIN Member a ON a.id = actor1 " +
+		"INNER JOIN Member b ON b.id = actor2 " +
+		"INNER JOIN Member c ON c.id = actor3 " +
+		"INNER JOIN Member d ON d.id = actor4 " +
+		"INNER JOIN Member e ON e.id = actor5 " +
+		"INNER JOIN Member f ON f.id = actor6 " +
+		"INNER JOIN Member g ON g.id = actor7"
+
+	rows, err := conn.Query(context.Background(), queryString)
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+
+		var actor1 string
+		var actor2 string
+		var actor3 string
+		var actor4 string
+		var actor5 string
+		var actor6 string
+		var actor7 string
+
+		err = rows.Scan(&actor1, &actor2, &actor3, &actor4, &actor5, &actor6, &actor7)
+		if err != nil {
+			log.Error(err)
+		}
+
+		fmt.Println(actor1 + "," + actor2 + "," + actor3 + "," + actor4 + "," + actor5 + "," + actor6 + "," + actor7)
+
+	}
+
+	err = conn.Close(context.Background())
+	if err != nil {
+		log.Error(err)
+	}
+}
+
 // Minimum support is 5
 // Therefore we must only keep entries with a count >=5 for
 // all tables
@@ -304,7 +354,8 @@ func main() {
 	//createL2()
 	//createL3()
 
-	generateAprioriLattices()
+	//generateAprioriLattices()
+	getMembers()
 
 	t := time.Now()
 	elapsed := t.Sub(start)
