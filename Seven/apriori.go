@@ -334,7 +334,7 @@ func getMembers() {
 			log.Error(err)
 		}
 
-		fmt.Println(actor1 + "," + actor2 + "," + actor3 + "," + actor4 + "," + actor5 + "," + actor6 + "," + actor7)
+		fmt.Println(actor1 + ", " + actor2 + ", " + actor3 + ", " + actor4 + ", " + actor5 + ", " + actor6 + ", " + actor7)
 
 	}
 
