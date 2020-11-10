@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -35,13 +37,33 @@ func addNormalizedStartYear() {
 		log.Error(err)
 	}
 
+	jsonMap := make(map[string]interface{})
+
 	defer cursor.Close(context.Background())
+
+	var minMaxes [4]decimal.Decimal
 
 	for cursor.Next(context.Background()) {
 
-		fmt.Println(cursor.Current)
+		err = json.Unmarshal([]byte(cursor.Current.String()), &jsonMap)
+
+		if err != nil {
+			log.Error(err)
+		}
 	}
 
+	minMaxes[0], err = decimal.NewFromString(jsonMap["minStartYear"].(map[string]interface{})["$numberInt"].(string))
+	if err != nil {
+		log.Error(err)
+	}
+
+	minMaxes[1], err = decimal.NewFromString(jsonMap["maxStartYear"].(map[string]interface{})["$numberInt"].(string))
+	if err != nil {
+		log.Error(err)
+	}
+
+	minMaxes[2], err = decimal.NewFromString(jsonMap["minAvgRating"].(string))
+	minMaxes[3], err = decimal.NewFromString(jsonMap["maxAvgRating"].(string))
 }
 
 func connectToMongo() *mongo.Client {
