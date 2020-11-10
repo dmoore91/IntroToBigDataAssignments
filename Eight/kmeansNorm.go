@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func addNormalizedStartYear() {
+func addNormalizedStartYear() map[string]decimal.Decimal {
 
 	client := connectToMongo()
 
@@ -29,7 +29,7 @@ func addNormalizedStartYear() {
 		{"minAvgRating", bson.D{{"$min", "$avgRating"}}},
 		{"maxAvgRating", bson.D{{"$max", "$avgRating"}}}}}}
 
-	cursor, err := client.Database("assignment_four").Collection("Movies").Aggregate(context.Background(),
+	cursor, err := client.Database("assignment_eight").Collection("Movies").Aggregate(context.Background(),
 		mongo.Pipeline{filterForMoviesStage, filterOutNoVotes, filterOutNoRating, filterOutTooLittleVotes,
 			minMaxStage})
 
@@ -41,7 +41,7 @@ func addNormalizedStartYear() {
 
 	defer cursor.Close(context.Background())
 
-	var minMaxes [4]decimal.Decimal
+	minMaxes := make(map[string]decimal.Decimal)
 
 	for cursor.Next(context.Background()) {
 
@@ -52,18 +52,51 @@ func addNormalizedStartYear() {
 		}
 	}
 
-	minMaxes[0], err = decimal.NewFromString(jsonMap["minStartYear"].(map[string]interface{})["$numberInt"].(string))
+	minMaxes["minStartYear"], err = decimal.NewFromString(jsonMap["minStartYear"].(map[string]interface{})["$numberInt"].(string))
 	if err != nil {
 		log.Error(err)
 	}
 
-	minMaxes[1], err = decimal.NewFromString(jsonMap["maxStartYear"].(map[string]interface{})["$numberInt"].(string))
+	minMaxes["maxStartYear"], err = decimal.NewFromString(jsonMap["maxStartYear"].(map[string]interface{})["$numberInt"].(string))
 	if err != nil {
 		log.Error(err)
 	}
 
-	minMaxes[2], err = decimal.NewFromString(jsonMap["minAvgRating"].(string))
-	minMaxes[3], err = decimal.NewFromString(jsonMap["maxAvgRating"].(string))
+	minMaxes["minAvgRating"], err = decimal.NewFromString(jsonMap["minAvgRating"].(string))
+	minMaxes["maxAvgRating"], err = decimal.NewFromString(jsonMap["maxAvgRating"].(string))
+
+	return minMaxes
+}
+
+func addKmeansNormalized(minMaxes map[string]decimal.Decimal) {
+
+	client := connectToMongo()
+
+	filterForMoviesStage := bson.D{{"$match", bson.D{{"type", "movie"}}}}
+	filterOutNoVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutNoRating := bson.D{{"$match", bson.D{{"avgRating",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutTooLittleVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$gt", 10000}}}}}}
+	addKmeansNorm := bson.D{{"$set", bson.D{{"kmeansNorm",
+		bson.A{bson.D{{"$divide",
+			bson.A{bson.D{{"$subtract",
+				bson.A{bson.D{{"$toDecimal", "$startYear"}}, bson.D{{"$toDecimal", minMaxes["minStartYear"].String()}}}}},
+				bson.D{{"$toDecimal", minMaxes["maxStartYear"].Sub(minMaxes["minStartYear"]).String()}}}}},
+			bson.A{bson.D{{"$divide",
+				bson.A{bson.D{{"$subtract",
+					bson.A{bson.D{{"$toDecimal", "$avgRating"}}, bson.D{{"$toDecimal", minMaxes["minAvgRating"].String()}}}}},
+					bson.D{{"$toDecimal", minMaxes["maxAvgRating"].Sub(minMaxes["minAvgRating"]).String()}}}}}}}}}}}
+
+	_, err := client.Database("assignment_eight").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{filterForMoviesStage, filterOutNoVotes, filterOutNoRating, filterOutTooLittleVotes,
+			addKmeansNorm})
+
+	if err != nil {
+		log.Error(err)
+	}
+
 }
 
 func connectToMongo() *mongo.Client {
@@ -89,7 +122,9 @@ func connectToMongo() *mongo.Client {
 func main() {
 	start := time.Now()
 
-	addNormalizedStartYear()
+	minMaxes := addNormalizedStartYear()
+
+	addKmeansNormalized(minMaxes)
 
 	t := time.Now()
 	elapsed := t.Sub(start)
