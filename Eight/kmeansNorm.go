@@ -96,6 +96,45 @@ func addKmeansNormalized(minMaxes map[string]decimal.Decimal) {
 	if err != nil {
 		log.Error(err)
 	}
+}
+
+func getKDocumentsFromGenre(k int, g string) {
+
+	client := connectToMongo()
+
+	//Clear all existing documents but just dropping collection
+	err := client.Database("assignment_eight").Collection("Collections").Drop(context.Background())
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	filterForMoviesStage := bson.D{{"$match", bson.D{{"type", "movie"}}}}
+	filterOutNoVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutNoRating := bson.D{{"$match", bson.D{{"avgRating",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutTooLittleVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$gt", 10000}}}}}}
+	unwindGenresStage := bson.D{{"$unwind", "$genres"}}
+	filterForGenre := bson.D{{"$match", bson.D{{"genres", g}}}}
+	sampleKRandomDocs := bson.D{{"$sample", bson.D{{"size", k}}}}
+
+	cursor, err := client.Database("assignment_eight").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{filterForMoviesStage, filterOutNoVotes, filterOutNoRating, filterOutTooLittleVotes,
+			unwindGenresStage, filterForGenre, sampleKRandomDocs})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer cursor.Close(context.Background())
+
+	//clusterID := 1
+
+	for cursor.Next(context.Background()) {
+		fmt.Println(cursor.Current.String())
+	}
 
 }
 
@@ -122,9 +161,10 @@ func connectToMongo() *mongo.Client {
 func main() {
 	start := time.Now()
 
-	minMaxes := addNormalizedStartYear()
+	//minMaxes := addNormalizedStartYear()
+	//addKmeansNormalized(minMaxes)
 
-	addKmeansNormalized(minMaxes)
+	getKDocumentsFromGenre(100, "Action")
 
 	t := time.Now()
 	elapsed := t.Sub(start)
