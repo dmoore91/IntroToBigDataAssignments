@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
+	"github.com/wcharczuk/go-chart"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"math"
+	"os"
 	"strconv"
 	"time"
 )
@@ -489,6 +491,10 @@ func runKMeansOnGenresAndSizes() {
 	genres := []string{"Action", "Horror", "Romance", "Sci-Fi"}
 
 	for _, genre := range genres {
+
+		var data []float64
+		var clusterSizes []float64
+
 		for k := 10; k <= 50; k += 5 {
 			getKDocumentsFromGenre(k, genre)
 
@@ -497,7 +503,31 @@ func runKMeansOnGenresAndSizes() {
 			}
 
 			sse := getSumOfSquaredErrors(genre)
+			data = append(data, sse)
 			fmt.Println(sse)
+
+			clusterSizes = append(clusterSizes, float64(k))
+		}
+
+		graph := chart.Chart{
+			Series: []chart.Series{
+				chart.ContinuousSeries{
+					XValues: clusterSizes,
+					YValues: data,
+				},
+			},
+		}
+
+		f, _ := os.Create("Eight/" + genre + ".png")
+
+		err := graph.Render(chart.PNG, f)
+		if err != nil {
+			log.Error(err)
+		}
+
+		err = f.Close()
+		if err != nil {
+			log.Error(err)
 		}
 	}
 }
