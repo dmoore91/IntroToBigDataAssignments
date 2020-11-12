@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"math"
 	"time"
 )
 
@@ -43,6 +44,15 @@ type cluster struct {
 	Id              int    `bson:"_id"`
 	KmeansStartYear string `bson:"kmeansStartYear"`
 	KmeansAvgRating string `bson:"kmeansAvgRating"`
+}
+
+type clusters struct {
+	Clusters []cluster
+}
+
+type kmeans struct {
+	KmeansStartYear decimal.Decimal
+	KmeansAvgRating decimal.Decimal
 }
 
 func getMinAndMax() map[string]decimal.Decimal {
@@ -224,6 +234,149 @@ func getKDocumentsFromGenre(k int, g string) {
 
 }
 
+func oneStepKMeans(g string) {
+
+	client := connectToMongo()
+
+	cursor, err := client.Database("assignment_eight").Collection("centroids").Find(context.Background(), bson.D{})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	var clusterList clusters
+
+	defer cursor.Close(context.Background())
+
+	for cursor.Next(context.Background()) {
+		var c cluster
+		err = bson.UnmarshalExtJSON([]byte(cursor.Current.String()), false, &c)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		clusterList.Clusters = append(clusterList.Clusters, c)
+	}
+
+	filterForMoviesStage := bson.D{{"$match", bson.D{{"type", "movie"}}}}
+	filterOutNoVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutNoRating := bson.D{{"$match", bson.D{{"avgRating",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutTooLittleVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$gt", 10000}}}}}}
+	unwindGenresStage := bson.D{{"$unwind", "$genres"}}
+	filterForGenre := bson.D{{"$match", bson.D{{"genres", g}}}}
+
+	cursor, err = client.Database("assignment_eight").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{filterForMoviesStage, filterOutNoVotes, filterOutNoRating, filterOutTooLittleVotes,
+			unwindGenresStage, filterForGenre})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	defer cursor.Close(context.Background())
+
+	var operations []mongo.WriteModel
+
+	clusterMap := make(map[int][]kmeans)
+
+	for cursor.Next(context.Background()) {
+
+		jsonMap := make(map[string]interface{})
+		err = json.Unmarshal([]byte(cursor.Current.String()), &jsonMap)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		kmeansStartYear, err := decimal.NewFromString(jsonMap["kmeansNorm"].([]interface{})[0].(string))
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		kmeansAvgRating, err := decimal.NewFromString(jsonMap["kmeansNorm"].([]interface{})[1].(string))
+		if err != nil {
+			log.Error(err)
+		}
+
+		closestClusterID := 0
+		closestClusterDistance := math.MaxFloat64
+
+		for _, cluster := range clusterList.Clusters {
+
+			clusterKmeansAvgRating, err := decimal.NewFromString(cluster.KmeansAvgRating)
+			if err != nil {
+				log.Error(err)
+			}
+
+			clusterKmeansStartYear, err := decimal.NewFromString(cluster.KmeansAvgRating)
+			if err != nil {
+				log.Error(err)
+			}
+
+			diffFloat, _ := clusterKmeansAvgRating.Sub(kmeansAvgRating).Pow(decimal.NewFromInt(2)).
+				Add(clusterKmeansStartYear.Sub(kmeansStartYear).Pow(decimal.NewFromInt(2))).BigFloat().Float64()
+			distance := math.Sqrt(diffFloat)
+
+			if distance < closestClusterDistance {
+				closestClusterID = cluster.Id
+			}
+		}
+
+		clusterMap[closestClusterID] = append(clusterMap[closestClusterID], kmeans{
+			KmeansStartYear: kmeansStartYear,
+			KmeansAvgRating: kmeansAvgRating,
+		})
+
+		operationA := mongo.NewUpdateOneModel()
+		operationA.SetFilter(bson.M{"_id": jsonMap["_id"].(map[string]interface{})["$numberInt"].(string)})
+		operationA.SetUpdate(bson.M{"$set": bson.M{"cluster": closestClusterID}})
+		operationA.SetUpsert(false)
+		operations = append(operations, operationA)
+	}
+
+	_, err = client.Database("assignment_eight").Collection("Movies").
+		BulkWrite(context.TODO(), operations)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var clusterOperations []mongo.WriteModel
+
+	for id, kmeanList := range clusterMap {
+
+		avgRating := decimal.NewFromInt(0)
+		startYear := decimal.NewFromInt(0)
+
+		numMeans := 0
+
+		for _, kmean := range kmeanList {
+			avgRating.Add(kmean.KmeansAvgRating)
+			startYear.Add(kmean.KmeansStartYear)
+
+			numMeans += 1
+		}
+
+		operationA := mongo.NewUpdateOneModel()
+		operationA.SetFilter(bson.M{"_id": id})
+		operationA.SetUpdate(bson.M{"$set": bson.M{"kmeansStartYear": startYear.Div(decimal.NewFromInt(int64(numMeans))),
+			"kmeansAvgRating": avgRating.Div(decimal.NewFromInt(int64(numMeans)))}})
+		operationA.SetUpsert(false)
+		clusterOperations = append(operations, operationA)
+	}
+
+	_, err = client.Database("assignment_eight").Collection("centroids").
+		BulkWrite(context.TODO(), clusterOperations)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
 func connectToMongo() *mongo.Client {
 	// Set client options
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
@@ -249,8 +402,8 @@ func main() {
 
 	//minMaxes := getMinAndMax()
 	//addKmeansNormalized(minMaxes)
-
-	getKDocumentsFromGenre(100, "Action")
+	//getKDocumentsFromGenre(100, "Action")
+	oneStepKMeans("Action")
 
 	t := time.Now()
 	elapsed := t.Sub(start)
