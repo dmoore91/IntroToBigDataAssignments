@@ -39,6 +39,12 @@ type title struct {
 	KmeansNorm     []decimal.Decimal `bson:"kmeansNorm" json:"kmeansNorm"`
 }
 
+type cluster struct {
+	Id              int    `bson:"_id"`
+	KmeansStartYear string `bson:"kmeansStartYear"`
+	KmeansAvgRating string `bson:"kmeansAvgRating"`
+}
+
 func getMinAndMax() map[string]decimal.Decimal {
 
 	client := connectToMongo()
@@ -182,7 +188,9 @@ func getKDocumentsFromGenre(k int, g string) {
 
 	defer cursor.Close(context.Background())
 
-	//clusterID := 1
+	clusterID := 1
+
+	var operations []mongo.WriteModel
 
 	for cursor.Next(context.Background()) {
 
@@ -192,7 +200,26 @@ func getKDocumentsFromGenre(k int, g string) {
 			log.Fatal(err)
 		}
 
-		fmt.Println(cursor.Current.String())
+		var c cluster
+		c.Id = clusterID
+		c.KmeansStartYear = jsonMap["kmeansNorm"].([]interface{})[0].(string)
+		c.KmeansAvgRating = jsonMap["kmeansNorm"].([]interface{})[1].(string)
+
+		operationA := mongo.NewInsertOneModel()
+		operationA.SetDocument(c)
+
+		operations = append(operations, operationA)
+
+		clusterID += 1
+	}
+
+	bulkOption := options.BulkWriteOptions{}
+	bulkOption.SetOrdered(true)
+
+	_, err = client.Database("assignment_eight").Collection("centroids").
+		BulkWrite(context.TODO(), operations, &bulkOption)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 }
