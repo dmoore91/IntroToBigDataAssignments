@@ -226,11 +226,8 @@ func getKDocumentsFromGenre(k int, g string) {
 		clusterID += 1
 	}
 
-	bulkOption := options.BulkWriteOptions{}
-	bulkOption.SetOrdered(true)
-
 	_, err = client.Database("assignment_eight").Collection("centroids").
-		BulkWrite(context.TODO(), operations, &bulkOption)
+		BulkWrite(context.TODO(), operations)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -281,8 +278,6 @@ func oneStepKMeans(g string) {
 	}
 
 	defer cursor.Close(context.Background())
-
-	var operations []mongo.WriteModel
 
 	clusterMap := make(map[int][]kmeans)
 
@@ -344,20 +339,10 @@ func oneStepKMeans(g string) {
 			log.Error(err)
 		}
 
-		operationA := mongo.NewUpdateOneModel()
-		operationA.SetFilter(bson.M{"_id": id})
-		operationA.SetUpdate(bson.M{"$set": bson.M{"cluster": closestClusterID}})
-		operationA.SetUpsert(false)
-		operations = append(operations, operationA)
-	}
+		_, err = client.Database("assignment_eight").Collection("Movies").
+			UpdateOne(context.Background(), bson.M{"_id": id}, bson.M{"$set": bson.M{"cluster": closestClusterID}})
 
-	_, err = client.Database("assignment_eight").Collection("Movies").
-		BulkWrite(context.TODO(), operations)
-	if err != nil {
-		log.Fatal(err)
 	}
-
-	var clusterOperations []mongo.WriteModel
 
 	for id, kmeanList := range clusterMap {
 
@@ -374,20 +359,16 @@ func oneStepKMeans(g string) {
 			numMeans += 1
 		}
 
-		operationA := mongo.NewUpdateOneModel()
-		operationA.SetFilter(bson.M{"_id": id})
-		operationA.SetUpdate(bson.M{"$set": bson.M{"kmeansStartYear": startYear.Div(decimal.NewFromInt(int64(numMeans))).String(),
-			"kmeansAvgRating": avgRating.Div(decimal.NewFromInt(int64(numMeans))).String()}})
-		operationA.SetUpsert(false)
-		clusterOperations = append(clusterOperations, operationA)
-	}
+		_, err = client.Database("assignment_eight").Collection("centroids").
+			UpdateOne(context.Background(), bson.M{"_id": id},
+				bson.M{"$set": bson.M{"kmeansStartYear": startYear.Div(decimal.NewFromInt(int64(numMeans))).String(),
+					"kmeansAvgRating": avgRating.Div(decimal.NewFromInt(int64(numMeans))).String()}})
 
-	_, err = client.Database("assignment_eight").Collection("centroids").
-		BulkWrite(context.TODO(), clusterOperations)
-	if err != nil {
-		log.Fatal(err)
-	}
+		if err != nil {
+			log.Error(err)
+		}
 
+	}
 }
 
 func getSumOfSquaredErrors(g string) float64 {
@@ -488,7 +469,8 @@ func getSumOfSquaredErrors(g string) float64 {
 
 func runKMeansOnGenresAndSizes() {
 
-	genres := []string{"Action", "Horror", "Romance", "Sci-Fi"}
+	//genres := []string{"Action", "Horror", "Romance", "Sci-Fi", "Thriller}
+	genres := []string{"Thriller"}
 
 	for _, genre := range genres {
 
