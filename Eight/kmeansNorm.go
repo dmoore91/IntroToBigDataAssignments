@@ -7,6 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 	"github.com/wcharczuk/go-chart"
+	"github.com/wcharczuk/go-chart/drawing"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -56,6 +57,31 @@ type clusters struct {
 type kmeans struct {
 	KmeansStartYear decimal.Decimal
 	KmeansAvgRating decimal.Decimal
+}
+
+type floats struct {
+	AvgRating float64
+	StartYear float64
+}
+
+func connectToMongo() *mongo.Client {
+	// Set client options
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+
+	// Connect to MongoDB
+	client, err := mongo.Connect(context.Background(), clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Check the connection
+	err = client.Ping(context.TODO(), nil)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return client
 }
 
 func getMinAndMax() map[string]decimal.Decimal {
@@ -513,24 +539,111 @@ func runKMeansOnGenresAndSizes() {
 	}
 }
 
-func connectToMongo() *mongo.Client {
-	// Set client options
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+func visualizeCluster(g string) {
 
-	// Connect to MongoDB
-	client, err := mongo.Connect(context.Background(), clientOptions)
+	client := connectToMongo()
+
+	filterForMoviesStage := bson.D{{"$match", bson.D{{"type", "movie"}}}}
+	filterOutNoVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutNoRating := bson.D{{"$match", bson.D{{"avgRating",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutTooLittleVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$gt", 10000}}}}}}
+	unwindGenresStage := bson.D{{"$unwind", "$genres"}}
+	filterForGenre := bson.D{{"$match", bson.D{{"genres", g}}}}
+
+	cursor, err := client.Database("assignment_eight").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{filterForMoviesStage, filterOutNoVotes, filterOutNoRating, filterOutTooLittleVotes,
+			unwindGenresStage, filterForGenre})
+
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
-	// Check the connection
-	err = client.Ping(context.TODO(), nil)
+	defer cursor.Close(context.Background())
 
-	if err != nil {
-		log.Fatal(err)
+	clustermap := make(map[floats]int)
+
+	var xValues []float64
+	var yValues []float64
+
+	for cursor.Next(context.Background()) {
+
+		jsonMap := make(map[string]interface{})
+		err = json.Unmarshal([]byte(cursor.Current.String()), &jsonMap)
+
+		c, _ := strconv.Atoi(jsonMap["cluster"].(map[string]interface{})["$numberInt"].(string))
+		startYear, _ := strconv.ParseFloat(jsonMap["kmeansNorm"].([]interface{})[0].(string), 64)
+		avgRating, _ := strconv.ParseFloat(jsonMap["kmeansNorm"].([]interface{})[1].(string), 64)
+
+		f := floats{
+			AvgRating: avgRating,
+			StartYear: startYear,
+		}
+
+		clustermap[f] = c
+
+		xValues = append(xValues, startYear)
+		yValues = append(yValues, avgRating)
 	}
 
-	return client
+	colorLookup := make(map[int]drawing.Color)
+	colorLookup[1] = drawing.ColorFromHex("#800000")
+	colorLookup[2] = drawing.ColorFromHex("#9A6324")
+	colorLookup[3] = drawing.ColorFromHex("#808000")
+	colorLookup[4] = drawing.ColorFromHex("#469990")
+	colorLookup[5] = drawing.ColorFromHex("#000075")
+	colorLookup[6] = drawing.ColorFromHex("#000000")
+	colorLookup[7] = drawing.ColorFromHex("#e6194B")
+	colorLookup[8] = drawing.ColorFromHex("#f58231")
+	colorLookup[9] = drawing.ColorFromHex("#ffe119")
+	colorLookup[10] = drawing.ColorFromHex("#bfef45")
+	colorLookup[11] = drawing.ColorFromHex("#3cb44b")
+	colorLookup[12] = drawing.ColorFromHex("#42d4f4")
+	colorLookup[13] = drawing.ColorFromHex("#4363d8")
+	colorLookup[14] = drawing.ColorFromHex("#911eb4")
+	colorLookup[15] = drawing.ColorFromHex("#f032e6")
+	colorLookup[16] = drawing.ColorFromHex("#a9a9a9")
+	colorLookup[17] = drawing.ColorFromHex("#fabed4")
+	colorLookup[18] = drawing.ColorFromHex("#ffd8b1")
+	colorLookup[19] = drawing.ColorFromHex("#fffac8")
+	colorLookup[20] = drawing.ColorFromHex("#aaffc3")
+	colorLookup[21] = drawing.ColorFromHex("#dcbeff")
+
+	viridisByY := func(xr, yr chart.Range, index int, x, y float64) drawing.Color {
+
+		f := floats{
+			AvgRating: y,
+			StartYear: x,
+		}
+
+		cluster := clustermap[f]
+		return colorLookup[cluster]
+	}
+
+	graph := chart.Chart{
+		Series: []chart.Series{
+			chart.ContinuousSeries{
+				Style: chart.Style{
+					StrokeWidth:      chart.Disabled,
+					DotWidth:         5,
+					DotColorProvider: viridisByY,
+				},
+				XValues: xValues,
+				YValues: yValues,
+			},
+		},
+	}
+
+	f, _ := os.Create("Eight/test_plot.png")
+	defer f.Close()
+
+	err = graph.Render(chart.PNG, f)
+	if err != nil {
+		log.Error(err)
+	}
+
 }
 
 func main() {
@@ -540,7 +653,9 @@ func main() {
 	//addKmeansNormalized(minMaxes)
 	//getKDocumentsFromGenre(100, "Action")
 	//oneStepKMeans("Action")
-	runKMeansOnGenresAndSizes()
+	//runKMeansOnGenresAndSizes()
+
+	visualizeCluster("Action")
 
 	t := time.Now()
 	elapsed := t.Sub(start)
