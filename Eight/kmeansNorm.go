@@ -495,7 +495,8 @@ func getSumOfSquaredErrors(g string) float64 {
 
 func runKMeansOnGenresAndSizes() {
 
-	genres := []string{"Action", "Horror", "Romance", "Sci-Fi", "Thriller"}
+	//genres := []string{"Action", "Horror", "Romance", "Sci-Fi", "Thriller"}
+	genres := []string{"Action"}
 
 	for _, genre := range genres {
 
@@ -507,6 +508,17 @@ func runKMeansOnGenresAndSizes() {
 
 			for i := 0; i < 100; i++ {
 				oneStepKMeans(genre)
+
+				graph := visualizeCluster(genre)
+
+				f, _ := os.Create("Eight/" + genre + "_" + strconv.Itoa(i) + ".png")
+
+				err := graph.Render(chart.PNG, f)
+				if err != nil {
+					log.Error(err)
+				}
+
+				f.Close()
 			}
 
 			sse := getSumOfSquaredErrors(genre)
@@ -539,7 +551,7 @@ func runKMeansOnGenresAndSizes() {
 	}
 }
 
-func visualizeCluster(g string) {
+func visualizeCluster(g string) chart.Chart {
 
 	client := connectToMongo()
 
@@ -636,14 +648,7 @@ func visualizeCluster(g string) {
 		},
 	}
 
-	f, _ := os.Create("Eight/test_plot.png")
-	defer f.Close()
-
-	err = graph.Render(chart.PNG, f)
-	if err != nil {
-		log.Error(err)
-	}
-
+	return graph
 }
 
 func main() {
@@ -653,9 +658,9 @@ func main() {
 	//addKmeansNormalized(minMaxes)
 	//getKDocumentsFromGenre(100, "Action")
 	//oneStepKMeans("Action")
-	//runKMeansOnGenresAndSizes()
+	runKMeansOnGenresAndSizes()
 
-	visualizeCluster("Action")
+	//visualizeCluster("Action")
 
 	t := time.Now()
 	elapsed := t.Sub(start)
