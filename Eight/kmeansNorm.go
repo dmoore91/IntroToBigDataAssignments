@@ -469,8 +469,7 @@ func getSumOfSquaredErrors(g string) float64 {
 
 func runKMeansOnGenresAndSizes() {
 
-	//genres := []string{"Action", "Horror", "Romance", "Sci-Fi", "Thriller}
-	genres := []string{"Thriller"}
+	genres := []string{"Action", "Horror", "Romance", "Sci-Fi", "Thriller"}
 
 	for _, genre := range genres {
 
