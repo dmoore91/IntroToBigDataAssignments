@@ -560,7 +560,7 @@ func runKMeansOnGenresAndSizes() {
 			//Print initial Graph
 			graph := visualizeCluster(genre)
 
-			f, _ := os.Create("Eight/" + genre + "_" + strconv.Itoa(k) + ".png")
+			f, _ := os.Create("Eight/Scatterplots/" + genre + "/" + genre + "_" + strconv.Itoa(k) + ".png")
 
 			err := graph.Render(chart.PNG, f)
 			if err != nil {
