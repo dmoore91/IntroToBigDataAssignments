@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -48,11 +49,6 @@ type cluster struct {
 	Id              int     `bson:"_id"`
 	KmeansStartYear float64 `bson:"kmeansStartYear"`
 	KmeansAvgRating float64 `bson:"kmeansAvgRating"`
-}
-
-type kmeans struct {
-	KmeansStartYear decimal.Decimal
-	KmeansAvgRating decimal.Decimal
 }
 
 type floats struct {
@@ -247,7 +243,12 @@ func getKDocumentsFromGenre(k int, g string) {
 
 	}
 
-	rand.Shuffle(len(clusters), func(i, j int) { clusters[i], clusters[j] = clusters[j], clusters[i] })
+	// Needed to make sure we get different random number each time
+	rand.Seed(time.Now().UnixNano())
+
+	rand.Shuffle(len(clusters), func(i, j int) {
+		clusters[i], clusters[j] = clusters[j], clusters[i]
+	})
 
 	var operations []mongo.WriteModel
 
@@ -269,7 +270,7 @@ func getKDocumentsFromGenre(k int, g string) {
 
 }
 
-func oneStepKMeans(g string) {
+func oneStepKMeans(g string) int {
 
 	client := connectToMongo()
 
@@ -338,6 +339,8 @@ func oneStepKMeans(g string) {
 
 	defer cursor.Close(context.Background())
 
+	clusterToKmeansMap := make(map[int][]floats)
+
 	for cursor.Next(context.Background()) {
 		jsonMap := make(map[string]interface{})
 		err = json.Unmarshal([]byte(cursor.Current.String()), &jsonMap)
@@ -345,114 +348,197 @@ func oneStepKMeans(g string) {
 			log.Fatal(err)
 		}
 
-		//kmeansNorm := jsonMap["kmeansNorm"].([]interface{})
+		kmeansNorm := jsonMap["kmeansNorm"].([]interface{})
 
-		//startYear, _ := strconv.ParseFloat(kmeansNorm[0].(string), 64)
-		//avgRating, _ := strconv.ParseFloat(kmeansNorm[0].(string), 64)
+		startYear, _ := strconv.ParseFloat(kmeansNorm[0].(string), 64)
+		avgRating, _ := strconv.ParseFloat(kmeansNorm[1].(string), 64)
+
+		clusterID := 0
+		minDistance := math.MaxFloat64
+
+		for _, c := range clusters {
+
+			startYearDistance := c.KmeansStartYear - startYear
+			avgRatingDistance := c.KmeansAvgRating - avgRating
+
+			startYearDistanceSquared := math.Pow(startYearDistance, 2)
+			avgRatingDistanceSquared := math.Pow(avgRatingDistance, 2)
+
+			distance := math.Sqrt(startYearDistanceSquared + avgRatingDistanceSquared)
+
+			if distance <= minDistance {
+				minDistance = distance
+				clusterID = c.Id
+			}
+		}
+
+		clusterToKmeansMap[clusterID] = append(clusterToKmeansMap[clusterID], floats{
+			AvgRating: avgRating,
+			StartYear: startYear,
+		})
+
+		id, err := strconv.Atoi(jsonMap["_id"].(map[string]interface{})["$numberInt"].(string))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// update
+		filter := bson.D{{"_id", id}}
+
+		update := bson.D{{"$set", bson.D{{"cluster", clusterID}}}}
+
+		_, err = client.Database("assignment_eight").Collection("Movies").UpdateOne(
+			context.Background(), filter, update)
+
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
+	numClusters := 0
+	numUpdated := 0
+	for cluster, kmeans := range clusterToKmeansMap {
+
+		avgRatingSum := 0.0
+		startYearSum := 0.0
+
+		for _, k := range kmeans {
+			avgRatingSum += k.AvgRating
+			startYearSum += k.StartYear
+		}
+
+		avgAvgRating := avgRatingSum / float64(len(kmeans))
+		avgStartYear := startYearSum / float64(len(kmeans))
+
+		// update
+		filter := bson.D{{"_id", cluster}}
+
+		update := bson.D{{"$set", bson.D{{"kmeansStartYear", avgStartYear},
+			{"kmeansAvgRating", avgAvgRating}}}}
+
+		result, err := client.Database("assignment_eight").Collection("centroids").UpdateOne(
+			context.Background(), filter, update)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		numClusters += 1
+		numUpdated += int(result.ModifiedCount)
+	}
+
+	return numUpdated
 }
 
-//func getSumOfSquaredErrors(g string) float64 {
-//
-//	client := connectToMongo()
-//
-//	cursor, err := client.Database("assignment_eight").Collection("centroids").Find(context.Background(), bson.D{})
-//
-//	if err != nil {
-//		log.Error(err)
-//	}
-//
-//	clustermap := make(map[int]cluster)
-//
-//	defer cursor.Close(context.Background())
-//
-//	for cursor.Next(context.Background()) {
-//
-//		var c cluster
-//		err = bson.UnmarshalExtJSON([]byte(cursor.Current.String()), false, &c)
-//
-//		if err != nil {
-//			log.Error(err)
-//		}
-//
-//		clustermap[c.Id] = c
-//	}
-//
-//	filterForMoviesStage := bson.D{{"$match", bson.D{{"type", "movie"}}}}
-//	filterOutNoVotes := bson.D{{"$match", bson.D{{"numVotes",
-//		bson.D{{"$ne", nil}}}}}}
-//	filterOutNoRating := bson.D{{"$match", bson.D{{"avgRating",
-//		bson.D{{"$ne", nil}}}}}}
-//	filterOutTooLittleVotes := bson.D{{"$match", bson.D{{"numVotes",
-//		bson.D{{"$gt", 10000}}}}}}
-//	unwindGenresStage := bson.D{{"$unwind", "$genres"}}
-//	filterForGenre := bson.D{{"$match", bson.D{{"genres", g}}}}
-//
-//	cursor, err = client.Database("assignment_eight").Collection("Movies").Aggregate(context.Background(),
-//		mongo.Pipeline{filterForMoviesStage, filterOutNoVotes, filterOutNoRating, filterOutTooLittleVotes,
-//			unwindGenresStage, filterForGenre})
-//
-//	if err != nil {
-//		log.Error(err)
-//	}
-//
-//	defer cursor.Close(context.Background())
-//
-//	sse := 0.0
-//
-//	for cursor.Next(context.Background()) {
-//
-//		jsonMap := make(map[string]interface{})
-//		err = json.Unmarshal([]byte(cursor.Current.String()), &jsonMap)
-//
-//		if err != nil {
-//			log.Error(err)
-//		}
-//
-//		kmeansStartYear, err := decimal.NewFromString(jsonMap["kmeansNorm"].([]interface{})[0].(string))
-//
-//		if err != nil {
-//			log.Error(err)
-//		}
-//
-//		kmeansAvgRating, err := decimal.NewFromString(jsonMap["kmeansNorm"].([]interface{})[1].(string))
-//		if err != nil {
-//			log.Error(err)
-//		}
-//
-//		clusterId, err := strconv.Atoi(jsonMap["cluster"].(map[string]interface{})["$numberInt"].(string))
-//		if err != nil {
-//			log.Error(err)
-//		}
-//
-//		cluster := clustermap[clusterId]
-//
-//		clusterKmeansAvgRating, err := decimal.NewFromString(cluster.KmeansAvgRating)
-//		if err != nil {
-//			log.Error(err)
-//		}
-//
-//		clusterKmeansStartYear, err := decimal.NewFromString(cluster.KmeansAvgRating)
-//		if err != nil {
-//			log.Error(err)
-//		}
-//
-//		avgRatingError, _ := kmeansAvgRating.Sub(clusterKmeansAvgRating).Pow(decimal.NewFromInt(2)).BigFloat().Float64()
-//		startYear, _ := kmeansStartYear.Sub(clusterKmeansStartYear).Pow(decimal.NewFromInt(2)).BigFloat().Float64()
-//
-//		sse += avgRatingError
-//		sse += startYear
-//
-//	}
-//
-//	return sse
-//}
+func getSumOfSquaredErrors(g string) float64 {
+
+	client := connectToMongo()
+
+	// Get our clusters
+
+	cursor, err := client.Database("assignment_eight").Collection("centroids").Find(context.Background(), bson.D{})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	clustermap := make(map[int]cluster)
+
+	defer cursor.Close(context.Background())
+
+	for cursor.Next(context.Background()) {
+		jsonMap := make(map[string]interface{})
+		err = json.Unmarshal([]byte(cursor.Current.String()), &jsonMap)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		avgRating, err := strconv.ParseFloat(jsonMap["kmeansAvgRating"].(map[string]interface{})["$numberDouble"].(string), 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		startYear, err := strconv.ParseFloat(jsonMap["kmeansStartYear"].(map[string]interface{})["$numberDouble"].(string), 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		id, err := strconv.Atoi(jsonMap["_id"].(map[string]interface{})["$numberInt"].(string))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		c := cluster{
+			Id:              id,
+			KmeansStartYear: startYear,
+			KmeansAvgRating: avgRating,
+		}
+
+		clustermap[id] = c
+	}
+
+	filterForMoviesStage := bson.D{{"$match", bson.D{{"type", "movie"}}}}
+	filterOutNoVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutNoRating := bson.D{{"$match", bson.D{{"avgRating",
+		bson.D{{"$ne", nil}}}}}}
+	filterOutTooLittleVotes := bson.D{{"$match", bson.D{{"numVotes",
+		bson.D{{"$gt", 10000}}}}}}
+	unwindGenresStage := bson.D{{"$unwind", "$genres"}}
+	filterForGenre := bson.D{{"$match", bson.D{{"genres", g}}}}
+
+	cursor, err = client.Database("assignment_eight").Collection("Movies").Aggregate(context.Background(),
+		mongo.Pipeline{filterForMoviesStage, filterOutNoVotes, filterOutNoRating, filterOutTooLittleVotes,
+			unwindGenresStage, filterForGenre})
+
+	if err != nil {
+		log.Error(err)
+	}
+
+	defer cursor.Close(context.Background())
+
+	sse := 0.0
+
+	for cursor.Next(context.Background()) {
+
+		jsonMap := make(map[string]interface{})
+		err = json.Unmarshal([]byte(cursor.Current.String()), &jsonMap)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		kmeansStartYear, err := strconv.ParseFloat(jsonMap["kmeansNorm"].([]interface{})[0].(string), 64)
+
+		if err != nil {
+			log.Error(err)
+		}
+
+		kmeansAvgRating, err := strconv.ParseFloat(jsonMap["kmeansNorm"].([]interface{})[1].(string), 64)
+		if err != nil {
+			log.Error(err)
+		}
+
+		clusterId, err := strconv.Atoi(jsonMap["cluster"].(map[string]interface{})["$numberInt"].(string))
+		if err != nil {
+			log.Error(err)
+		}
+
+		cluster := clustermap[clusterId]
+
+		startYearErrorSquared := math.Pow(kmeansStartYear-cluster.KmeansStartYear, 2)
+		avgRatingErrorSquared := math.Pow(kmeansAvgRating-cluster.KmeansAvgRating, 2)
+
+		sse += startYearErrorSquared
+		sse += avgRatingErrorSquared
+	}
+
+	return sse
+}
 
 func runKMeansOnGenresAndSizes() {
 
-	//genres := []string{"Action", "Horror", "Romance", "Sci-Fi", "Thriller"}
-	genres := []string{"Action"}
+	genres := []string{"Action", "Horror", "Romance", "Sci-Fi", "Thriller"}
 
 	for _, genre := range genres {
 
@@ -463,46 +549,35 @@ func runKMeansOnGenresAndSizes() {
 			getKDocumentsFromGenre(k, genre)
 
 			for i := 0; i < 100; i++ {
-				oneStepKMeans(genre)
+				numUpdated := oneStepKMeans(genre)
 
-				//graph := visualizeCluster(genre)
-
-				//f, _ := os.Create("Eight/" + genre + "_" + strconv.Itoa(i) + ".png")
-				//
-				//err := graph.Render(chart.PNG, f)
-				//if err != nil {
-				//	log.Error(err)
-				//}
-				//
-				//f.Close()
+				if numUpdated == 0 {
+					//At this point we've converged and nothing will change the more we run kmeans
+					fmt.Println(i)
+					break
+				}
 			}
 
-			//sse := getSumOfSquaredErrors(genre)
-			//data = append(data, sse)
-			//fmt.Println(sse)
+			//Print initial Graph
+			graph := visualizeCluster(genre)
+
+			f, _ := os.Create("Eight/" + genre + "_" + strconv.Itoa(k) + ".png")
+
+			err := graph.Render(chart.PNG, f)
+			if err != nil {
+				log.Error(err)
+			}
+
+			err = f.Close()
+			if err != nil {
+				log.Error(err)
+			}
+
+			sse := getSumOfSquaredErrors(genre)
+			data = append(data, sse)
+			fmt.Println(sse)
 
 			clusterSizes = append(clusterSizes, float64(k))
-		}
-
-		graph := chart.Chart{
-			Series: []chart.Series{
-				chart.ContinuousSeries{
-					XValues: clusterSizes,
-					YValues: data,
-				},
-			},
-		}
-
-		f, _ := os.Create("Eight/" + genre + ".png")
-
-		err := graph.Render(chart.PNG, f)
-		if err != nil {
-			log.Error(err)
-		}
-
-		err = f.Close()
-		if err != nil {
-			log.Error(err)
 		}
 	}
 }
@@ -612,9 +687,9 @@ func main() {
 
 	//minMaxes := getMinAndMax()
 	//addKmeansNormalized(minMaxes)
-	getKDocumentsFromGenre(100, "Action")
-	oneStepKMeans("Action")
-	//runKMeansOnGenresAndSizes()
+	//getKDocumentsFromGenre(10, "Action")
+	//oneStepKMeans("Action")
+	runKMeansOnGenresAndSizes()
 
 	//visualizeCluster("Action")
 
