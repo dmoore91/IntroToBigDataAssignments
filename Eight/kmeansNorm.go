@@ -553,7 +553,6 @@ func runKMeansOnGenresAndSizes() {
 
 				if numUpdated == 0 {
 					//At this point we've converged and nothing will change the more we run kmeans
-					fmt.Println(i)
 					break
 				}
 			}
@@ -575,9 +574,26 @@ func runKMeansOnGenresAndSizes() {
 
 			sse := getSumOfSquaredErrors(genre)
 			data = append(data, sse)
-			fmt.Println(sse)
 
 			clusterSizes = append(clusterSizes, float64(k))
+		}
+
+		graph := chart.Chart{
+			Series: []chart.Series{
+				chart.ContinuousSeries{
+					XValues: clusterSizes,
+					YValues: data,
+				},
+			},
+		}
+		f, _ := os.Create("Eight/" + genre + ".png")
+		err := graph.Render(chart.PNG, f)
+		if err != nil {
+			log.Error(err)
+		}
+		err = f.Close()
+		if err != nil {
+			log.Error(err)
 		}
 	}
 }
