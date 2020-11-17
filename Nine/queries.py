@@ -9,11 +9,12 @@ def phi_actors():
     spark = SparkSession.builder.master("local").appName("Phi").getOrCreate()
 
     titles = spark.read.csv("title.basics.tsv", sep="\t", header=True)
-    actors = spark.read.csv("name.basics.tsv", sep="\t", nullValue="\\N", header=True)
+    people = spark.read.csv("name.basics.tsv", sep="\t", nullValue="\\N", header=True)
     principals = spark.read.csv("title.principals.tsv", sep="\t", header=True)
+    actors = principals.filter(principals.category == 'actor')
 
-    title_to_actor = titles.join(principals, on=['tconst'], how='inner')
-    title_to_actor = title_to_actor.join(actors, on=['nconst'], how='inner')
+    title_to_actor = titles.join(actors, on=['tconst'], how='inner')
+    title_to_actor = title_to_actor.join(people, on=['nconst'], how='inner')
 
     phis = title_to_actor.filter(title_to_actor.primaryName.startswith("Phi"))
     living_phis = phis.filter(phis.deathYear.isNull())
