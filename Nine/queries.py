@@ -1,4 +1,6 @@
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import split, array_contains
+import pyspark.sql.functions as f
 import time
 
 
@@ -32,5 +34,35 @@ def phi_actors():
         print(row)
 
 
+def prolific_gills():
+    start = time.time()
+
+    spark = SparkSession.builder.master("local").appName("Gil").getOrCreate()
+
+    titles = spark.read.csv("title.basics.tsv", sep="\t", header=True)
+    people = spark.read.csv("name.basics.tsv", sep="\t", nullValue="\\N", header=True)
+    principals = spark.read.csv("title.principals.tsv", sep="\t", header=True)
+    producers = principals.filter(principals.category == 'producer')
+
+    titles = titles.withColumn('genres',  split(titles['genres'], ","))
+    title_to_producer = titles.join(producers, on=['tconst'], how='inner')
+    title_to_producer = title_to_producer.join(people, on=['nconst'], how='inner')
+    title_to_producer = title_to_producer.filter(array_contains(title_to_producer.genres, "Talk-Show"))
+
+    gills = title_to_producer.filter(title_to_producer.primaryName.contains("Gill"))
+
+    counts = gills.groupBy("primaryName").agg(f.countDistinct("primaryTitle").alias("count"))
+
+    max_count = counts.orderBy('count', ascending=False).head(1)[0]['count']
+
+    prolific_producers = counts.filter(f.col('count') == max_count)
+
+    print("Took: " + str(time.time() - start) + " seconds")
+
+    for row in prolific_producers.head(10):
+        print(row)
+
+
 if __name__ == '__main__':
-    phi_actors()
+    # phi_actors()
+    prolific_gills()
