@@ -101,7 +101,7 @@ func livingActorsWhoHavePlayedJesusChrist() {
 		log.Fatal(err)
 	}
 
-	queryString := "SELECT name " +
+	queryString := "SELECT DISTINCT name " +
 		"FROM Member " +
 		"INNER JOIN Actor_Title_Role ON Actor_Title_Role.actor = member.id " +
 		"WHERE deathYear IS NOT NULL " +
@@ -271,9 +271,9 @@ func getLongRunningProducers() {
 }
 
 func main() {
-	executeInvalidActorsQuery()
-	actorsNamedPhiAndDidntActIn2014()
-	getProducersGill()
-	getLongRunningProducers()
+	//executeInvalidActorsQuery()
+	//actorsNamedPhiAndDidntActIn2014()
+	//getProducersGill()
+	//getLongRunningProducers()
 	livingActorsWhoHavePlayedJesusChrist()
 }
