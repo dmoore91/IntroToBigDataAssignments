@@ -94,7 +94,34 @@ def longRunningProducers():
         print(row)
 
 
+def jesusChristActors():
+    start = time.time()
+
+    spark = SparkSession.builder.master("local").appName("Phi").getOrCreate()
+
+    people = spark.read.csv("name.basics.tsv", sep="\t", nullValue="\\N", header=True)
+    principals = spark.read.csv("title.principals.tsv", sep="\t", header=True)
+    actors = principals.filter(principals.category == 'actor')
+
+    actor_to_role = people.join(actors, on=['nconst'], how='inner')
+    actor_to_role = actor_to_role.filter(actor_to_role.deathYear.isNull())
+
+    jesus = actor_to_role.filter(actor_to_role.characters.contains("Jesus"))
+    christ = actor_to_role.filter(actor_to_role.characters.contains("Christ"))
+
+    u = jesus.unionAll(christ)
+
+    names = u[['primaryName']]
+    unique_names = names.dropDuplicates()
+
+    print("Took: " + str(time.time() - start) + " seconds")
+
+    for row in unique_names.head(10):
+        print(row)
+
+
 if __name__ == '__main__':
     # phi_actors()
     # prolific_gills()
-    longRunningProducers()
+    # longRunningProducers()
+    jesusChristActors()
